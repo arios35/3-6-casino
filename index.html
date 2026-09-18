@@ -584,8 +584,8 @@
 
   <button id="hilo-start-btn" class="casino-btn" style="width:100%;" onclick="startHiLo()">🂡 スタート</button>
   <div class="hilo-btn-row" id="hilo-play-btns" style="display:none;">
-    <button class="casino-btn" onclick="playHiLo('high')">🔺 ハイ</button>
-    <button class="casino-btn" onclick="playHiLo('low')">🔻 ロー</button>
+    <button class="casino-btn" id="hilo-high-btn" onclick="playHiLo('high')">🔺 ハイ</button>
+    <button class="casino-btn" id="hilo-low-btn" onclick="playHiLo('low')">🔻 ロー</button>
   </div>
   <button id="hilo-cashout-btn" class="casino-btn secondary" style="width:100%; margin-top:10px; display:none;" onclick="cashoutHiLo()">💰 ここで換金する</button>
   <div class="result-line" id="hilo-result-text"></div>
@@ -802,6 +802,7 @@
   ];
   const SLOT_PAYOUT = { '🍒': 3, '🍋': 4, '🔔': 6, '⭐': 8, '🍀': 10, '💎': 20, '7⃣': 50 };
   const SLOT_ITEM_HEIGHT = 78;
+  const SLOT_REEL_DURATIONS = [1.4, 1.9, 2.4]; // 秒。リールごとの回転時間（時間差停止の演出用）
 
   let slotBet = 10;
   let slotSpinning = false;
@@ -834,7 +835,7 @@
     strip.appendChild(finalDiv);
 
     void strip.offsetHeight; // reflow
-    const duration = 1.4 + reelIndex * 0.5;
+    const duration = SLOT_REEL_DURATIONS[reelIndex];
     strip.style.transition = `transform ${duration}s cubic-bezier(0.2, 0.8, 0.25, 1)`;
     strip.style.transform = `translateY(-${(itemCount - 1) * SLOT_ITEM_HEIGHT}px)`;
   }
@@ -851,6 +852,7 @@
       buildReelStrip(r, finals[r]);
     }
 
+    const maxDurationMs = Math.max(...SLOT_REEL_DURATIONS) * 1000;
     setTimeout(() => {
       let earned = 0;
       let msg = '';
@@ -868,7 +870,7 @@
       document.getElementById('slot-result-text').innerHTML = msg;
       slotSpinning = false;
       document.getElementById('slot-spin-btn').disabled = false;
-    }, 1.4 + 2 * 0.5 + 0.3 ? 2900 : 2900);
+    }, maxDurationMs + 300);
   }
 
   // ============================================================
@@ -905,6 +907,12 @@
     document.getElementById('hilo-bet-amount').innerText = hiloBet;
   }
 
+  function updateHiloButtonAvailability() {
+    // 現在のカードがK(13)ならHIGHは絶対に勝てない、A(1)ならLOWは絶対に勝てないので押せなくする
+    document.getElementById('hilo-high-btn').disabled = (hiloCurrentCard.rank === 13);
+    document.getElementById('hilo-low-btn').disabled = (hiloCurrentCard.rank === 1);
+  }
+
   function startHiLo() {
     if (hiloPlaying) return;
     if (!spendTickets(hiloBet)) return;
@@ -920,6 +928,7 @@
     document.getElementById('hilo-play-btns').style.display = 'flex';
     document.getElementById('hilo-cashout-btn').style.display = 'none';
     document.querySelectorAll('#hilo-chip-row .chip-btn').forEach(b => b.disabled = true);
+    updateHiloButtonAvailability();
   }
 
   function playHiLo(choice) {
@@ -934,6 +943,7 @@
     if (nextCard.rank === hiloCurrentCard.rank) {
       document.getElementById('hilo-result-text').innerText = '🤝 同じ数字だった！引き分け、もう一度どうぞ';
       hiloCurrentCard = nextCard;
+      updateHiloButtonAvailability();
       return;
     }
 
@@ -956,6 +966,7 @@
         renderCard(document.getElementById('hilo-card-current'), hiloCurrentCard, false);
         nextEl.style.opacity = '0.3';
         renderCard(nextEl, { rank: 0, suit: '' }, true);
+        updateHiloButtonAvailability();
       } else {
         document.getElementById('hilo-result-text').innerText = `😢 ハズレ… ベットした${hiloBet}枚は没収です`;
         endHiLo(false);
@@ -1049,6 +1060,7 @@
     const playerBJ = bjHandValue(bjPlayerCards) === 21;
     const dealerBJ = bjHandValue(bjDealerCards) === 21;
     if (playerBJ || dealerBJ) {
+      document.getElementById('bj-play-btns').style.display = 'none';
       setTimeout(() => bjFinish('naturals', playerBJ, dealerBJ), 500);
     }
   }
@@ -1058,6 +1070,7 @@
     bjPlayerCards.push(bjRandomCard());
     bjRenderAll(false);
     if (bjHandValue(bjPlayerCards) > 21) {
+      document.getElementById('bj-play-btns').style.display = 'none';
       setTimeout(() => bjFinish('bust'), 400);
     }
   }
