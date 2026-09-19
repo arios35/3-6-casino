@@ -552,20 +552,9 @@
     text-align: left;
     flex: 1;
   }
-  .skip-btn {
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.35);
-    color: var(--ink-dim);
-    font-size: 11px;
-    font-weight: bold;
-    padding: 8px 12px;
-    border-radius: 10px;
-    cursor: pointer;
-    white-space: nowrap;
-  }
   .finish-line {
     position: absolute;
-    left: 6px;
+    left: -30px;
     top: 0;
     bottom: 0;
     width: 20px;
@@ -576,6 +565,12 @@
     justify-content: center;
     z-index: 3;
     border-right: 3px dashed rgba(255,255,255,0.5);
+    opacity: 0;
+    transition: left 1.4s ease-out, opacity 1.4s ease-out;
+  }
+  .finish-line.visible {
+    left: 6px;
+    opacity: 1;
   }
   .horse-lane {
     position: absolute;
@@ -748,7 +743,7 @@
   <div class="race-track" id="race-track">
     <div class="track-rail top"></div>
     <div class="track-rail bottom"></div>
-    <div class="finish-line">🏁</div>
+    <div class="finish-line" id="finish-line">🏁</div>
   </div>
   <div class="race-progress-wrap">
     <div class="race-progress-label">RACE PROGRESS</div>
@@ -756,7 +751,6 @@
   </div>
   <div class="race-commentary-box">
     <div class="race-commentary-text" id="horse-commentary">タップしてレース開始</div>
-    <button class="skip-btn" id="horse-skip-btn" onclick="skipHorseRace()" style="display:none;">⏩ スキップ</button>
   </div>
 
   <div class="horse-pick-list" id="horse-pick-list"></div>
@@ -1162,17 +1156,21 @@
     return 0;
   }
 
+  let finishLineRevealed = false;
+
   function resetHorseLanes() {
     HORSES.forEach((h, i) => {
       const lane = document.getElementById('horse-lane-' + i);
       lane.style.transition = 'none';
       lane.style.transform = `translate(0px, ${HORSE_START_Y[i]}px)`;
+      lane.style.opacity = '1';
       lane.style.zIndex = 2;
     });
     document.getElementById('track-bg-strip').classList.remove('scrolling');
     document.getElementById('horse-commentary').innerText = 'タップしてレース開始';
     document.getElementById('race-progress-fill').style.width = '0%';
-    document.getElementById('horse-skip-btn').style.display = 'none';
+    document.getElementById('finish-line').classList.remove('visible');
+    finishLineRevealed = false;
     HORSES.forEach((h, i) => {
       const badge = document.getElementById('standing-badge-' + i);
       badge.classList.remove('leader');
@@ -1220,6 +1218,15 @@
       horseSegmentTimeouts.push(tid);
       delay += segTime;
     });
+
+    // ゴールを通過したら、そのまま左へ抜けながらフェードアウト
+    const exitY = currentY;
+    const exitTid = setTimeout(() => {
+      laneEl.style.transition = `transform 900ms ease-in, opacity 900ms ease-in`;
+      laneEl.style.transform = `translate(${-(trackDistance + 90)}px, ${exitY}px)`;
+      laneEl.style.opacity = '0';
+    }, delay);
+    horseSegmentTimeouts.push(exitTid);
   }
 
   function updateHorseCommentary() {
@@ -1240,6 +1247,11 @@
 
     const progress = Math.min(1, (Date.now() - horseRaceStartTs) / horseRaceEstDuration);
     document.getElementById('race-progress-fill').style.width = (progress * 100) + '%';
+
+    if (!finishLineRevealed && progress >= 0.78) {
+      finishLineRevealed = true;
+      document.getElementById('finish-line').classList.add('visible');
+    }
   }
 
   function startHorseRace() {
@@ -1252,7 +1264,6 @@
     document.getElementById('horse-spin-btn').disabled = true;
     document.getElementById('horse-result').innerText = '';
     resetHorseLanes();
-    document.getElementById('horse-skip-btn').style.display = 'inline-block';
     void document.getElementById('race-track').offsetHeight; // reflow
     document.getElementById('track-bg-strip').classList.add('scrolling');
 
@@ -1286,27 +1297,9 @@
     clearInterval(horseCommentaryTimer);
     document.getElementById('track-bg-strip').classList.remove('scrolling');
     document.getElementById('race-progress-fill').style.width = '100%';
-    document.getElementById('horse-skip-btn').style.display = 'none';
     evaluateHorseResult(horseWinnerIndex);
     horseRacing = false;
     document.getElementById('horse-spin-btn').disabled = false;
-  }
-
-  // スキップ：残りの演出を全部キャンセルして、馬をゴール位置に飛ばして即結果表示
-  function skipHorseRace() {
-    if (!horseRacing) return;
-    horseSegmentTimeouts.forEach(tid => clearTimeout(tid));
-    horseSegmentTimeouts = [];
-    clearTimeout(horseFinishTimeout);
-    clearInterval(horseCommentaryTimer);
-
-    HORSES.forEach((h, i) => {
-      const lane = document.getElementById('horse-lane-' + i);
-      lane.style.transition = 'transform 0.4s ease-out';
-      lane.style.transform = `translate(${-horseTrackDistance}px, 0px)`;
-    });
-
-    setTimeout(() => { finishHorseRace(); }, 450);
   }
 
   function evaluateHorseResult(winnerIndex) {
