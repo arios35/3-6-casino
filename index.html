@@ -438,24 +438,42 @@
   /* --- 競馬 --- */
   .race-track {
     position: relative;
-    background: linear-gradient(180deg, #1a4d2e, #0d2a18);
+    background: linear-gradient(180deg, #16264f 0%, #16264f 42%, #3d6b2a 42%, #1f4d1a 100%);
     border: 3px solid var(--gold-dark);
     border-radius: 12px;
-    padding: 8px 0;
+    padding: 0;
     overflow: hidden;
-    height: 250px;
+    height: 190px;
   }
-  .race-track::before {
-    content: '';
+  .track-bg {
     position: absolute;
     inset: 0;
-    background: repeating-linear-gradient(
-      180deg,
-      rgba(255,255,255,0.05) 0px,
-      rgba(255,255,255,0.05) 2px,
-      transparent 2px,
-      transparent 48px
-    );
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .track-bg-strip {
+    position: absolute;
+    top: 38%;
+    left: 0;
+    width: 200%;
+    height: 60px;
+    display: flex;
+    align-items: flex-end;
+    transform: translateX(0%);
+  }
+  .track-bg-strip.scrolling {
+    animation: bg-tree-scroll 3.2s linear infinite;
+  }
+  @keyframes bg-tree-scroll {
+    from { transform: translateX(0%); }
+    to   { transform: translateX(50%); }
+  }
+  .bg-tree {
+    font-size: 30px;
+    margin: 0 30px;
+    opacity: 0.5;
+    filter: brightness(0.7);
   }
   .finish-line {
     position: absolute;
@@ -474,28 +492,31 @@
   .horse-lane {
     position: absolute;
     right: 4px;
-    width: 34px;
-    height: 34px;
+    top: 50%;
+    width: 56px;
+    height: 56px;
+    margin-top: -28px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
+    font-size: 42px;
     z-index: 2;
+    filter: drop-shadow(0 4px 3px rgba(0,0,0,0.5));
   }
   .horse-bib {
     position: absolute;
-    left: -2px;
-    bottom: -4px;
-    width: 15px;
-    height: 15px;
+    left: 2px;
+    bottom: 0px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: bold;
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid rgba(255,255,255,0.6);
+    border: 1px solid rgba(255,255,255,0.7);
   }
   .horse-pick-list {
     display: flex;
@@ -966,7 +987,6 @@
     { name: 'ウィンドランナー', color: '#00e5ff', odds: 8,  weight: 12 },
     { name: 'ダークホース',     color: '#9d4edd', odds: 15, weight: 6 }
   ];
-  const LANE_HEIGHT = 48;
   let horseBet = 100;
   let selectedHorseIndex = null;
   let horseRacing = false;
@@ -998,17 +1018,32 @@
   }
   buildHorsePickList();
 
+  const HORSE_START_Y = [-32, -16, 0, 16, 32]; // 横並びスタート（縦にわずかにずらして全馬見えるように）
+
   function buildRaceTrack() {
     const track = document.getElementById('race-track');
+
+    // 背景：流れる木
+    const bg = document.createElement('div');
+    bg.className = 'track-bg';
+    const strip = document.createElement('div');
+    strip.className = 'track-bg-strip';
+    strip.id = 'track-bg-strip';
+    let treesHtml = '';
+    for (let i = 0; i < 16; i++) {
+      treesHtml += `<span class="bg-tree">${i % 3 === 0 ? '🌲' : '🌳'}</span>`;
+    }
+    strip.innerHTML = treesHtml;
+    bg.appendChild(strip);
+    track.appendChild(bg);
+
     HORSES.forEach((h, i) => {
       const lane = document.createElement('div');
       lane.className = 'horse-lane';
       lane.id = 'horse-lane-' + i;
-      lane.style.top = (8 + i * LANE_HEIGHT) + 'px';
       lane.innerHTML = `🐎<span class="horse-bib" style="background:${h.color};">${i + 1}</span>`;
       track.appendChild(lane);
     });
-    track.style.height = (8 + HORSES.length * LANE_HEIGHT + 10) + 'px';
   }
   buildRaceTrack();
 
@@ -1026,8 +1061,10 @@
     HORSES.forEach((h, i) => {
       const lane = document.getElementById('horse-lane-' + i);
       lane.style.transition = 'none';
-      lane.style.transform = 'translateX(0px)';
+      lane.style.transform = `translate(0px, ${HORSE_START_Y[i]}px)`;
+      lane.style.zIndex = 2;
     });
+    document.getElementById('track-bg-strip').classList.remove('scrolling');
     document.getElementById('horse-commentary').innerText = '';
   }
   resetHorseLanes();
@@ -1044,19 +1081,23 @@
   }
 
   // 馬を区間ごとに緩急をつけて走らせる（区間ごとの時間は均等、進む距離はランダムに変化＝展開が生まれる）
-  function scheduleHorseSegments(laneEl, totalTimeMs, trackDistance) {
+  function scheduleHorseSegments(laneEl, totalTimeMs, trackDistance, startY) {
     const weights = [];
     for (let s = 0; s < HORSE_SEGMENT_COUNT; s++) weights.push(0.5 + Math.random());
     const sumW = weights.reduce((a, b) => a + b, 0);
     const segTime = totalTimeMs / HORSE_SEGMENT_COUNT;
     let cumDist = 0;
     let delay = 0;
+    let currentY = startY;
     weights.forEach((w) => {
       cumDist += trackDistance * (w / sumW);
       const dist = cumDist;
+      // 縦方向にランダムにジョストリング（横一列だったのが徐々に崩れていく）
+      currentY = Math.max(-34, Math.min(34, currentY + (Math.random() * 36 - 18)));
+      const y = currentY;
       setTimeout(() => {
         laneEl.style.transition = `transform ${segTime}ms ease-in-out`;
-        laneEl.style.transform = `translateX(${-dist}px)`;
+        laneEl.style.transform = `translate(${-dist}px, ${y}px)`;
       }, delay);
       delay += segTime;
     });
@@ -1066,6 +1107,11 @@
     const ranking = HORSES.map((h, i) => ({
       i, x: getCurrentTranslateX(document.getElementById('horse-lane-' + i))
     })).sort((a, b) => a.x - b.x); // より負の値（進んでる）が先頭
+
+    // 先頭にいる馬ほど手前（z-indexを高く）に描画して、横から見た重なりを表現
+    ranking.forEach((r, idx) => {
+      document.getElementById('horse-lane-' + r.i).style.zIndex = 10 - idx;
+    });
 
     const top3 = ranking.slice(0, 3).map((r, idx) => `${idx + 1}着 ${r.i + 1}.${HORSES[r.i].name}`).join(' / ');
     document.getElementById('horse-commentary').innerText = `🏇 実況: ${top3}`;
@@ -1082,9 +1128,10 @@
     document.getElementById('horse-result').innerText = '';
     resetHorseLanes();
     void document.getElementById('race-track').offsetHeight; // reflow
+    document.getElementById('track-bg-strip').classList.add('scrolling');
 
     const track = document.getElementById('race-track');
-    const trackDistance = track.clientWidth - 46; // 馬のサイズぶん引く
+    const trackDistance = track.clientWidth - 66; // 馬のサイズぶん引く
 
     const winnerIndex = weightedRandomHorseIndex();
     // 勝ち馬はだいたい17〜19.5秒で完走、他は勝ち馬より確実に遅く（最大26秒程度）
@@ -1095,7 +1142,7 @@
 
     HORSES.forEach((h, i) => {
       const lane = document.getElementById('horse-lane-' + i);
-      scheduleHorseSegments(lane, totalTimes[i], trackDistance);
+      scheduleHorseSegments(lane, totalTimes[i], trackDistance, HORSE_START_Y[i]);
     });
 
     updateHorseCommentary();
@@ -1104,6 +1151,7 @@
     const maxDuration = Math.max(...totalTimes);
     setTimeout(() => {
       clearInterval(horseCommentaryTimer);
+      document.getElementById('track-bg-strip').classList.remove('scrolling');
       evaluateHorseResult(winnerIndex);
       horseRacing = false;
       document.getElementById('horse-spin-btn').disabled = false;
