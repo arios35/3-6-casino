@@ -434,6 +434,101 @@
     margin-top: 12px;
   }
   .current-bet-display span { color: var(--gold); font-weight: bold; }
+
+  /* --- 競馬 --- */
+  .race-track {
+    position: relative;
+    background: linear-gradient(180deg, #1a4d2e, #0d2a18);
+    border: 3px solid var(--gold-dark);
+    border-radius: 12px;
+    padding: 8px 0;
+    overflow: hidden;
+    height: 250px;
+  }
+  .race-track::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      180deg,
+      rgba(255,255,255,0.05) 0px,
+      rgba(255,255,255,0.05) 2px,
+      transparent 2px,
+      transparent 48px
+    );
+  }
+  .finish-line {
+    position: absolute;
+    right: 6px;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    font-size: 16px;
+    writing-mode: vertical-rl;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+    border-left: 3px dashed rgba(255,255,255,0.5);
+  }
+  .horse-lane {
+    position: absolute;
+    left: 4px;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    z-index: 2;
+  }
+  .horse-bib {
+    position: absolute;
+    left: -2px;
+    bottom: -4px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    font-size: 9px;
+    font-weight: bold;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255,255,255,0.6);
+  }
+  .horse-pick-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 14px;
+  }
+  .horse-pick-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid transparent;
+    border-radius: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+  .horse-pick-item.selected {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 10px var(--neon-cyan);
+  }
+  .horse-pick-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: bold;
+  }
+  .horse-pick-odds {
+    font-size: 12px;
+    color: var(--gold);
+    font-weight: bold;
+  }
 </style>
 </head>
 <body>
@@ -531,6 +626,31 @@
 
   <button class="spin-btn" id="roulette-spin-btn" onclick="spinRoulette()">🎡 SPIN 🎡</button>
   <div class="result-line" id="roulette-result"></div>
+</div>
+
+<!-- 競馬 -->
+<div class="cabinet">
+  <div class="cabinet-header"><span class="cabinet-icon">🐎</span></div>
+  <p class="cabinet-title">HORSE RACING</p>
+  <p class="cabinet-desc">1頭選んで賭けよう！オッズが高いほど当てるのは難しいけど配当は大きい。</p>
+
+  <div class="race-track" id="race-track">
+    <div class="finish-line">🏁</div>
+  </div>
+
+  <div class="horse-pick-list" id="horse-pick-list"></div>
+
+  <div class="current-bet-display">選択中の馬: <span id="current-horse-label">なし</span></div>
+
+  <div class="bet-row" id="horse-bet-row" style="margin-top:14px;">
+    <button class="bet-btn active" data-bet="100" onclick="setHorseBet(100)">100枚</button>
+    <button class="bet-btn" data-bet="500" onclick="setHorseBet(500)">500枚</button>
+    <button class="bet-btn" data-bet="1000" onclick="setHorseBet(1000)">1000枚</button>
+    <button class="bet-btn" data-bet="3000" onclick="setHorseBet(3000)">3000枚</button>
+  </div>
+
+  <button class="spin-btn" id="horse-spin-btn" onclick="startHorseRace()">🐎 レース開始 🐎</button>
+  <div class="result-line" id="horse-result"></div>
 </div>
 
 <script>
@@ -798,7 +918,9 @@
     wheel.style.transform = `rotate(${wheelRotation}deg)`;
 
     // 玉はホイールと逆回転で、さらに多く回してからゆっくり減速して止まる
-    ballRotation -= (360 * 13 + Math.random() * 360);
+    // 玉は必ず「ちょうど◯周」で止める＝最終角度は常にポインター(真上)位置と一致させる
+    // これでホイールが止めた当選番号と、玉が落ちる位置が矛盾しなくなる
+    ballRotation -= 360 * 13;
     ball.style.transform = `rotate(${ballRotation}deg)`;
 
     setTimeout(() => {
@@ -831,6 +953,130 @@
       msg += '<br>😢 残念、はずれ…';
     }
     document.getElementById('roulette-result').innerHTML = msg;
+  }
+
+  // ============================================================
+  // 競馬
+  // ============================================================
+  const HORSES = [
+    { name: 'サンダーボルト',   color: '#e63946', odds: 2,  weight: 35 },
+    { name: 'ブラックパンサー', color: '#1a1a1a', odds: 3,  weight: 25 },
+    { name: 'ゴールドラッシュ', color: '#ffd23f', odds: 5,  weight: 18 },
+    { name: 'ウィンドランナー', color: '#00e5ff', odds: 8,  weight: 12 },
+    { name: 'ダークホース',     color: '#9d4edd', odds: 15, weight: 6 }
+  ];
+  const LANE_HEIGHT = 48;
+  let horseBet = 100;
+  let selectedHorseIndex = null;
+  let horseRacing = false;
+
+  function setHorseBet(v) {
+    horseBet = v;
+    document.querySelectorAll('#horse-bet-row .bet-btn').forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.bet) === v);
+    });
+  }
+
+  function selectHorse(i) {
+    if (horseRacing) return;
+    selectedHorseIndex = i;
+    document.querySelectorAll('.horse-pick-item').forEach((el, idx) => {
+      el.classList.toggle('selected', idx === i);
+    });
+    document.getElementById('current-horse-label').innerText = `${HORSES[i].name}（${HORSES[i].odds}倍）`;
+  }
+
+  function buildHorsePickList() {
+    const list = document.getElementById('horse-pick-list');
+    list.innerHTML = HORSES.map((h, i) => `
+      <div class="horse-pick-item" onclick="selectHorse(${i})">
+        <span class="horse-pick-name"><span style="color:${h.color};">🐎</span> ${i + 1}. ${h.name}</span>
+        <span class="horse-pick-odds">${h.odds}倍</span>
+      </div>
+    `).join('');
+  }
+  buildHorsePickList();
+
+  function buildRaceTrack() {
+    const track = document.getElementById('race-track');
+    HORSES.forEach((h, i) => {
+      const lane = document.createElement('div');
+      lane.className = 'horse-lane';
+      lane.id = 'horse-lane-' + i;
+      lane.style.top = (8 + i * LANE_HEIGHT) + 'px';
+      lane.innerHTML = `🐎<span class="horse-bib" style="background:${h.color};">${i + 1}</span>`;
+      track.appendChild(lane);
+    });
+    track.style.height = (8 + HORSES.length * LANE_HEIGHT + 10) + 'px';
+  }
+  buildRaceTrack();
+
+  function weightedRandomHorseIndex() {
+    const total = HORSES.reduce((s, h) => s + h.weight, 0);
+    let r = Math.random() * total;
+    for (let i = 0; i < HORSES.length; i++) {
+      if (r < HORSES[i].weight) return i;
+      r -= HORSES[i].weight;
+    }
+    return 0;
+  }
+
+  function resetHorseLanes() {
+    HORSES.forEach((h, i) => {
+      const lane = document.getElementById('horse-lane-' + i);
+      lane.style.transition = 'none';
+      lane.style.transform = 'translateX(0px)';
+    });
+  }
+  resetHorseLanes();
+
+  function startHorseRace() {
+    if (horseRacing) return;
+    if (selectedHorseIndex === null) { alert('賭ける馬を選んでね！'); return; }
+    if (tickets < horseBet) { alert('トークンが足りません！'); return; }
+
+    horseRacing = true;
+    updateTickets(-horseBet);
+    document.getElementById('horse-spin-btn').disabled = true;
+    document.getElementById('horse-result').innerText = '';
+    resetHorseLanes();
+    void document.getElementById('race-track').offsetHeight; // reflow
+
+    const track = document.getElementById('race-track');
+    const trackDistance = track.clientWidth - 46; // 馬のサイズぶん引く
+
+    const winnerIndex = weightedRandomHorseIndex();
+    const durations = HORSES.map(() => 3200 + Math.random() * 2200);
+    const otherMin = Math.min(...durations.filter((d, i) => i !== winnerIndex));
+    durations[winnerIndex] = Math.max(2600, otherMin - (200 + Math.random() * 350));
+
+    HORSES.forEach((h, i) => {
+      const lane = document.getElementById('horse-lane-' + i);
+      lane.style.transition = `transform ${durations[i]}ms cubic-bezier(0.3, 0.1, 0.3, 1)`;
+      lane.style.transform = `translateX(${trackDistance}px)`;
+    });
+
+    const maxDuration = Math.max(...durations);
+    setTimeout(() => {
+      evaluateHorseResult(winnerIndex);
+      horseRacing = false;
+      document.getElementById('horse-spin-btn').disabled = false;
+    }, maxDuration + 250);
+  }
+
+  function evaluateHorseResult(winnerIndex) {
+    const winnerHorse = HORSES[winnerIndex];
+    let msg = `1着: 🐎 ${winnerHorse.name}（${winnerIndex + 1}番）`;
+
+    if (selectedHorseIndex === winnerIndex) {
+      const earned = horseBet * winnerHorse.odds;
+      updateTickets(earned);
+      msg += `<br>🎉 的中！ 🎫 ${earned.toLocaleString()}枚 獲得！`;
+      spawnCoins(30);
+    } else {
+      msg += '<br>😢 残念、はずれ…';
+    }
+    document.getElementById('horse-result').innerHTML = msg;
   }
 </script>
 
