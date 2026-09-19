@@ -335,7 +335,7 @@
     height: 200px;
     border-radius: 50%;
     position: relative;
-    transition: transform 4s cubic-bezier(0.12, 0.68, 0.15, 1);
+    transition: transform 6s cubic-bezier(0.1, 0.55, 0.15, 1);
   }
   .roulette-number {
     position: absolute;
@@ -373,13 +373,10 @@
     box-shadow: 0 0 6px rgba(255,255,255,0.8);
     transform-origin: 50% 108px;
     z-index: 4;
+    transform: rotate(0deg);
   }
   .roulette-ball.spinning {
-    animation: ball-spin 1.1s linear infinite;
-  }
-  @keyframes ball-spin {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(-360deg); }
+    transition: transform 6.4s cubic-bezier(0.08, 0.5, 0.1, 1);
   }
 
   .bet-grid {
@@ -476,10 +473,10 @@
   </div>
 
   <div class="bet-row" id="slot-bet-row">
-    <button class="bet-btn" data-bet="10" onclick="setSlotBet(10)">10枚</button>
-    <button class="bet-btn active" data-bet="50" onclick="setSlotBet(50)">50枚</button>
-    <button class="bet-btn" data-bet="100" onclick="setSlotBet(100)">100枚</button>
+    <button class="bet-btn active" data-bet="100" onclick="setSlotBet(100)">100枚</button>
     <button class="bet-btn" data-bet="500" onclick="setSlotBet(500)">500枚</button>
+    <button class="bet-btn" data-bet="1000" onclick="setSlotBet(1000)">1000枚</button>
+    <button class="bet-btn" data-bet="3000" onclick="setSlotBet(3000)">3000枚</button>
   </div>
 
   <button class="spin-btn" id="slot-spin-btn" onclick="spinSlot()">🎰 SPIN 🎰</button>
@@ -526,10 +523,10 @@
   <div class="current-bet-display">選択中の賭け: <span id="current-bet-label">なし</span></div>
 
   <div class="bet-row" style="margin-top:14px;" id="roulette-bet-row">
-    <button class="bet-btn" data-bet="10" onclick="setRouletteBet(10)">10枚</button>
-    <button class="bet-btn active" data-bet="50" onclick="setRouletteBet(50)">50枚</button>
-    <button class="bet-btn" data-bet="100" onclick="setRouletteBet(100)">100枚</button>
+    <button class="bet-btn active" data-bet="100" onclick="setRouletteBet(100)">100枚</button>
     <button class="bet-btn" data-bet="500" onclick="setRouletteBet(500)">500枚</button>
+    <button class="bet-btn" data-bet="1000" onclick="setRouletteBet(1000)">1000枚</button>
+    <button class="bet-btn" data-bet="3000" onclick="setRouletteBet(3000)">3000枚</button>
   </div>
 
   <button class="spin-btn" id="roulette-spin-btn" onclick="spinRoulette()">🎡 SPIN 🎡</button>
@@ -578,7 +575,7 @@
   ];
   const SLOT_SYMBOL_HEIGHT = 72;
   const SLOT_STRIP_REPEAT = 10;
-  let slotBet = 50;
+  let slotBet = 100;
   let slotSpinning = false;
 
   function setSlotBet(v) {
@@ -723,11 +720,12 @@
     }
   })();
 
-  let rouletteBet = 50;
+  let rouletteBet = 100;
   let selectedBetType = null; // 'number' | 'red' | 'black' | 'even' | 'odd' | 'low' | 'high'
   let selectedNumber = null;
   let rouletteSpinning = false;
   let wheelRotation = 0;
+  let ballRotation = 0;
 
   function setRouletteBet(v) {
     rouletteBet = v;
@@ -784,7 +782,7 @@
     document.getElementById('roulette-result').innerText = '';
 
     const ball = document.getElementById('roulette-ball');
-    ball.classList.add('spinning');
+    if (!ball.classList.contains('spinning')) ball.classList.add('spinning');
 
     const winIndex = Math.floor(Math.random() * WHEEL_ORDER.length);
     const winNumber = WHEEL_ORDER[winIndex];
@@ -794,17 +792,20 @@
     const currentBase = wheelRotation % 360;
     let delta = targetWithinCircle - currentBase;
     while (delta < 0) delta += 360;
-    wheelRotation += 360 * 6 + delta;
+    wheelRotation += 360 * 10 + delta;
 
     const wheel = document.getElementById('roulette-wheel');
     wheel.style.transform = `rotate(${wheelRotation}deg)`;
 
+    // 玉はホイールと逆回転で、さらに多く回してからゆっくり減速して止まる
+    ballRotation -= (360 * 13 + Math.random() * 360);
+    ball.style.transform = `rotate(${ballRotation}deg)`;
+
     setTimeout(() => {
-      ball.classList.remove('spinning');
       evaluateRouletteResult(winNumber);
       rouletteSpinning = false;
       document.getElementById('roulette-spin-btn').disabled = false;
-    }, 4100);
+    }, 6500);
   }
 
   function evaluateRouletteResult(winNumber) {
