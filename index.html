@@ -459,7 +459,7 @@
   }
   .finish-line {
     position: absolute;
-    right: 6px;
+    left: 6px;
     top: 0;
     bottom: 0;
     width: 20px;
@@ -469,11 +469,11 @@
     align-items: center;
     justify-content: center;
     z-index: 3;
-    border-left: 3px dashed rgba(255,255,255,0.5);
+    border-right: 3px dashed rgba(255,255,255,0.5);
   }
   .horse-lane {
     position: absolute;
-    left: 4px;
+    right: 4px;
     width: 34px;
     height: 34px;
     display: flex;
@@ -637,6 +637,7 @@
   <div class="race-track" id="race-track">
     <div class="finish-line">🏁</div>
   </div>
+  <div class="result-line" id="horse-commentary" style="color: var(--neon-cyan); min-height:18px;"></div>
 
   <div class="horse-pick-list" id="horse-pick-list"></div>
 
@@ -1027,8 +1028,48 @@
       lane.style.transition = 'none';
       lane.style.transform = 'translateX(0px)';
     });
+    document.getElementById('horse-commentary').innerText = '';
   }
   resetHorseLanes();
+
+  const HORSE_SEGMENT_COUNT = 6;
+  let horseCommentaryTimer = null;
+
+  function getCurrentTranslateX(el) {
+    const t = getComputedStyle(el).transform;
+    if (t === 'none') return 0;
+    const m = t.match(/matrix\(([^)]+)\)/);
+    if (!m) return 0;
+    return parseFloat(m[1].split(',')[4]);
+  }
+
+  // 馬を区間ごとに緩急をつけて走らせる（区間ごとの時間は均等、進む距離はランダムに変化＝展開が生まれる）
+  function scheduleHorseSegments(laneEl, totalTimeMs, trackDistance) {
+    const weights = [];
+    for (let s = 0; s < HORSE_SEGMENT_COUNT; s++) weights.push(0.5 + Math.random());
+    const sumW = weights.reduce((a, b) => a + b, 0);
+    const segTime = totalTimeMs / HORSE_SEGMENT_COUNT;
+    let cumDist = 0;
+    let delay = 0;
+    weights.forEach((w) => {
+      cumDist += trackDistance * (w / sumW);
+      const dist = cumDist;
+      setTimeout(() => {
+        laneEl.style.transition = `transform ${segTime}ms ease-in-out`;
+        laneEl.style.transform = `translateX(${-dist}px)`;
+      }, delay);
+      delay += segTime;
+    });
+  }
+
+  function updateHorseCommentary() {
+    const ranking = HORSES.map((h, i) => ({
+      i, x: getCurrentTranslateX(document.getElementById('horse-lane-' + i))
+    })).sort((a, b) => a.x - b.x); // より負の値（進んでる）が先頭
+
+    const top3 = ranking.slice(0, 3).map((r, idx) => `${idx + 1}着 ${r.i + 1}.${HORSES[r.i].name}`).join(' / ');
+    document.getElementById('horse-commentary').innerText = `🏇 実況: ${top3}`;
+  }
 
   function startHorseRace() {
     if (horseRacing) return;
@@ -1046,27 +1087,33 @@
     const trackDistance = track.clientWidth - 46; // 馬のサイズぶん引く
 
     const winnerIndex = weightedRandomHorseIndex();
-    const durations = HORSES.map(() => 3200 + Math.random() * 2200);
-    const otherMin = Math.min(...durations.filter((d, i) => i !== winnerIndex));
-    durations[winnerIndex] = Math.max(2600, otherMin - (200 + Math.random() * 350));
+    // 勝ち馬はだいたい17〜19.5秒で完走、他は勝ち馬より確実に遅く（最大26秒程度）
+    const winnerTime = 17000 + Math.random() * 2500;
+    const totalTimes = HORSES.map((h, i) =>
+      i === winnerIndex ? winnerTime : winnerTime + 1200 + Math.random() * 6500
+    );
 
     HORSES.forEach((h, i) => {
       const lane = document.getElementById('horse-lane-' + i);
-      lane.style.transition = `transform ${durations[i]}ms cubic-bezier(0.3, 0.1, 0.3, 1)`;
-      lane.style.transform = `translateX(${trackDistance}px)`;
+      scheduleHorseSegments(lane, totalTimes[i], trackDistance);
     });
 
-    const maxDuration = Math.max(...durations);
+    updateHorseCommentary();
+    horseCommentaryTimer = setInterval(updateHorseCommentary, 1800);
+
+    const maxDuration = Math.max(...totalTimes);
     setTimeout(() => {
+      clearInterval(horseCommentaryTimer);
       evaluateHorseResult(winnerIndex);
       horseRacing = false;
       document.getElementById('horse-spin-btn').disabled = false;
-    }, maxDuration + 250);
+    }, maxDuration + 300);
   }
 
   function evaluateHorseResult(winnerIndex) {
     const winnerHorse = HORSES[winnerIndex];
-    let msg = `1着: 🐎 ${winnerHorse.name}（${winnerIndex + 1}番）`;
+    document.getElementById('horse-commentary').innerText = '';
+    let msg = `🏁 1着: 🐎 ${winnerHorse.name}（${winnerIndex + 1}番）`;
 
     if (selectedHorseIndex === winnerIndex) {
       const earned = horseBet * winnerHorse.odds;
