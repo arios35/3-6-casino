@@ -464,24 +464,28 @@
   }
   .track-bg-strip {
     position: absolute;
-    top: 26%;
+    bottom: 70%;
     left: 0;
     width: 200%;
-    height: 46px;
+    height: 0;
+    overflow: visible;
     display: flex;
     align-items: flex-end;
     transform: translateX(0%);
   }
   .track-bg-strip.scrolling {
-    animation: bg-tree-scroll 3.2s linear infinite;
+    animation: bg-tree-scroll 5s linear infinite;
   }
   @keyframes bg-tree-scroll {
     from { transform: translateX(0%); }
     to   { transform: translateX(50%); }
   }
   .bg-tree {
+    flex: none;
     font-size: 26px;
-    margin: 0 6px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
     opacity: 0.6;
     filter: brightness(0.65) saturate(0.9);
   }
@@ -569,31 +573,32 @@
     transition: left 1.4s ease-out, opacity 1.4s ease-out;
   }
   .finish-line.visible {
-    left: 6px;
+    left: 20%;
     opacity: 1;
   }
   .horse-lane {
     position: absolute;
-    right: 4px;
+    left: 50%;
     top: 50%;
-    width: 56px;
-    height: 56px;
-    margin-top: -28px;
+    width: 80px;
+    height: 80px;
+    margin-left: -40px;
+    margin-top: -40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 42px;
+    font-size: 62px;
     z-index: 2;
     filter: drop-shadow(0 4px 3px rgba(0,0,0,0.5));
   }
   .horse-bib {
     position: absolute;
-    left: 2px;
-    bottom: 0px;
-    width: 20px;
-    height: 20px;
+    left: 4px;
+    bottom: 2px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: bold;
     color: #fff;
     display: flex;
@@ -1116,17 +1121,20 @@
   function buildRaceTrack() {
     const track = document.getElementById('race-track');
 
-    // 背景：流れる木（生垣っぽく密に並べる）
+    // 背景：流れる木（1セットを正確に複製してシームレスにループさせる）
     const bg = document.createElement('div');
     bg.className = 'track-bg';
     const strip = document.createElement('div');
     strip.className = 'track-bg-strip';
     strip.id = 'track-bg-strip';
-    let treesHtml = '';
-    for (let i = 0; i < 24; i++) {
-      treesHtml += `<span class="bg-tree">${i % 4 === 0 ? '🌲' : '🌳'}</span>`;
+    const TREE_SLOT_WIDTH = 44;
+    const TREE_COUNT = 12;
+    let unitHtml = '';
+    for (let i = 0; i < TREE_COUNT; i++) {
+      unitHtml += `<span class="bg-tree" style="width:${TREE_SLOT_WIDTH}px;">${i % 3 === 0 ? '🌲' : '🌳'}</span>`;
     }
-    strip.innerHTML = treesHtml;
+    strip.innerHTML = unitHtml + unitHtml; // 同じセットを正確に2つ並べる
+    strip.style.width = (TREE_COUNT * TREE_SLOT_WIDTH * 2) + 'px';
     bg.appendChild(strip);
     track.insertBefore(bg, track.firstChild);
 
@@ -1180,6 +1188,7 @@
   resetHorseLanes();
 
   const HORSE_SEGMENT_COUNT = 6;
+  const HORSE_FINISH_GLIDE_MS = 1900; // ゴール時の滑らかな1回の動き
   let horseCommentaryTimer = null;
   let horseSegmentTimeouts = [];
   let horseFinishTimeout = null;
@@ -1187,54 +1196,50 @@
   let horseRaceEstDuration = 0;
   let horseWinnerIndex = null;
   let horseTrackDistance = 0;
+  let horseTotalTimes = [];
 
-  function getCurrentTranslateX(el) {
-    const t = getComputedStyle(el).transform;
-    if (t === 'none') return 0;
-    const m = t.match(/matrix\(([^)]+)\)/);
-    if (!m) return 0;
-    return parseFloat(m[1].split(',')[4]);
-  }
-
-  // 馬を区間ごとに緩急をつけて走らせる（区間ごとの時間は均等、進む距離はランダムに変化＝展開が生まれる）
-  function scheduleHorseSegments(laneEl, totalTimeMs, trackDistance, startY) {
+  // 馬は基本的に画面中央付近でジョストリング（小刻みな上下左右の揺れ）し続け、
+  // 自分のタイムが来たら最後だけ1回の滑らかな動きでゴールを通過して画面外へ抜ける
+  function scheduleHorseSegments(laneEl, totalTimeMs, startY) {
+    const jostlePhaseMs = Math.max(1000, totalTimeMs - HORSE_FINISH_GLIDE_MS);
     const weights = [];
-    for (let s = 0; s < HORSE_SEGMENT_COUNT; s++) weights.push(0.5 + Math.random());
+    for (let s = 0; s < HORSE_SEGMENT_COUNT; s++) weights.push(0.7 + Math.random() * 0.6);
     const sumW = weights.reduce((a, b) => a + b, 0);
-    const segTime = totalTimeMs / HORSE_SEGMENT_COUNT;
-    let cumDist = 0;
+
     let delay = 0;
+    let currentX = 0;
     let currentY = startY;
     weights.forEach((w) => {
-      cumDist += trackDistance * (w / sumW);
-      const dist = cumDist;
-      // 縦方向にランダムにジョストリング（横一列だったのが徐々に崩れていく）
+      const segTime = jostlePhaseMs * (w / sumW);
+      // 中央付近で小刻みにジョストリング（横一列が徐々に崩れていく）
+      currentX = Math.max(-38, Math.min(38, currentX + (Math.random() * 44 - 22)));
       currentY = Math.max(-34, Math.min(34, currentY + (Math.random() * 36 - 18)));
-      const y = currentY;
+      const x = currentX, y = currentY;
       const tid = setTimeout(() => {
         laneEl.style.transition = `transform ${segTime}ms ease-in-out`;
-        laneEl.style.transform = `translate(${-dist}px, ${y}px)`;
+        laneEl.style.transform = `translate(${x}px, ${y}px)`;
       }, delay);
       horseSegmentTimeouts.push(tid);
       delay += segTime;
     });
 
-    // ゴールを通過したら、そのまま左へ抜けながらフェードアウト
-    const exitY = currentY;
+    // ゴール：中央付近から1回の滑らかな動きで左へ抜けながらフェードアウト
     const exitTid = setTimeout(() => {
-      laneEl.style.transition = `transform 900ms ease-in, opacity 900ms ease-in`;
-      laneEl.style.transform = `translate(${-(trackDistance + 90)}px, ${exitY}px)`;
+      const exitX = -(horseTrackDistance / 2 + 140);
+      laneEl.style.transition = `transform ${HORSE_FINISH_GLIDE_MS}ms ease-out, opacity ${HORSE_FINISH_GLIDE_MS}ms ease-in`;
+      laneEl.style.transform = `translate(${exitX}px, ${currentY}px)`;
       laneEl.style.opacity = '0';
     }, delay);
     horseSegmentTimeouts.push(exitTid);
   }
 
   function updateHorseCommentary() {
+    const now = Date.now();
+    // 実際の見た目の揺れとは切り離し、経過時間÷持ちタイムの割合で順位を判定する
     const ranking = HORSES.map((h, i) => ({
-      i, x: getCurrentTranslateX(document.getElementById('horse-lane-' + i))
-    })).sort((a, b) => a.x - b.x); // より負の値（進んでる）が先頭
+      i, frac: Math.min(1, (now - horseRaceStartTs) / horseTotalTimes[i])
+    })).sort((a, b) => b.frac - a.frac); // 進捗率が高いほど先頭
 
-    // 先頭にいる馬ほど手前（z-indexを高く）に描画して、横から見た重なりを表現
     ranking.forEach((r, idx) => {
       document.getElementById('horse-lane-' + r.i).style.zIndex = 10 - idx;
       const badge = document.getElementById('standing-badge-' + r.i);
@@ -1245,7 +1250,7 @@
     const top3 = ranking.slice(0, 3).map((r, idx) => `${idx + 1}着 ${r.i + 1}.${HORSES[r.i].name}`).join(' / ');
     document.getElementById('horse-commentary').innerText = `🏇 実況: ${top3}`;
 
-    const progress = Math.min(1, (Date.now() - horseRaceStartTs) / horseRaceEstDuration);
+    const progress = Math.min(1, (now - horseRaceStartTs) / horseRaceEstDuration);
     document.getElementById('race-progress-fill').style.width = (progress * 100) + '%';
 
     if (!finishLineRevealed && progress >= 0.78) {
@@ -1280,7 +1285,7 @@
     horseSegmentTimeouts = [];
     HORSES.forEach((h, i) => {
       const lane = document.getElementById('horse-lane-' + i);
-      scheduleHorseSegments(lane, totalTimes[i], horseTrackDistance, HORSE_START_Y[i]);
+      scheduleHorseSegments(lane, totalTimes[i], HORSE_START_Y[i]);
     });
 
     horseRaceStartTs = Date.now();
