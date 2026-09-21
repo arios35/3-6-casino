@@ -477,8 +477,8 @@
     animation: bg-tree-scroll 5s linear infinite;
   }
   @keyframes bg-tree-scroll {
-    from { transform: translateX(0%); }
-    to   { transform: translateX(50%); }
+    from { transform: translateX(-50%); }
+    to   { transform: translateX(0%); }
   }
   .bg-tree {
     flex: none;
@@ -488,30 +488,6 @@
     justify-content: center;
     opacity: 0.6;
     filter: brightness(0.65) saturate(0.9);
-  }
-  .race-standings {
-    display: flex;
-    justify-content: center;
-    gap: 6px;
-    margin-bottom: 8px;
-    min-height: 26px;
-  }
-  .standing-badge {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    color: #fff;
-    font-size: 11px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid rgba(255,255,255,0.6);
-    transition: transform 0.3s ease, order 0.3s ease;
-  }
-  .standing-badge.leader {
-    box-shadow: 0 0 10px var(--gold);
-    transform: scale(1.15);
   }
   .race-progress-wrap {
     background: #1a0e08;
@@ -573,7 +549,7 @@
     transition: left 1.4s ease-out, opacity 1.4s ease-out;
   }
   .finish-line.visible {
-    left: 20%;
+    left: 38%;
     opacity: 1;
   }
   .horse-lane {
@@ -742,8 +718,6 @@
   <div class="cabinet-header"><span class="cabinet-icon">🐎</span></div>
   <p class="cabinet-title">HORSE RACING</p>
   <p class="cabinet-desc">1頭選んで賭けよう！オッズが高いほど当てるのは難しいけど配当は大きい。</p>
-
-  <div class="race-standings" id="race-standings"></div>
 
   <div class="race-track" id="race-track">
     <div class="track-rail top"></div>
@@ -1145,12 +1119,6 @@
       lane.innerHTML = `🐎<span class="horse-bib" style="background:${h.color};">${i + 1}</span>`;
       track.appendChild(lane);
     });
-
-    // 上部の着順バッジ（各馬の番号を色付きで表示、レース中に並び替わる）
-    const standings = document.getElementById('race-standings');
-    standings.innerHTML = HORSES.map((h, i) =>
-      `<div class="standing-badge" id="standing-badge-${i}" style="background:${h.color};">${i + 1}</div>`
-    ).join('');
   }
   buildRaceTrack();
 
@@ -1179,11 +1147,6 @@
     document.getElementById('race-progress-fill').style.width = '0%';
     document.getElementById('finish-line').classList.remove('visible');
     finishLineRevealed = false;
-    HORSES.forEach((h, i) => {
-      const badge = document.getElementById('standing-badge-' + i);
-      badge.classList.remove('leader');
-      badge.style.order = i;
-    });
   }
   resetHorseLanes();
 
@@ -1235,16 +1198,15 @@
 
   function updateHorseCommentary() {
     const now = Date.now();
-    // 実際の見た目の揺れとは切り離し、経過時間÷持ちタイムの割合で順位を判定する
-    const ranking = HORSES.map((h, i) => ({
-      i, frac: Math.min(1, (now - horseRaceStartTs) / horseTotalTimes[i])
-    })).sort((a, b) => b.frac - a.frac); // 進捗率が高いほど先頭
+    // 進捗率(frac)だけだと持ちタイム順に固定されたままなので、表示用にランダムな揺らぎを加えて
+    // 実況上の順位がレース中もっと入れ替わって見えるようにする（本当の着順は最後のゴール演出で決まる）
+    const ranking = HORSES.map((h, i) => {
+      const frac = Math.min(1, (now - horseRaceStartTs) / horseTotalTimes[i]);
+      return { i, score: frac * 55 + Math.random() * 45 };
+    }).sort((a, b) => b.score - a.score); // スコアが高いほど先頭
 
     ranking.forEach((r, idx) => {
       document.getElementById('horse-lane-' + r.i).style.zIndex = 10 - idx;
-      const badge = document.getElementById('standing-badge-' + r.i);
-      badge.style.order = idx;
-      badge.classList.toggle('leader', idx === 0);
     });
 
     const top3 = ranking.slice(0, 3).map((r, idx) => `${idx + 1}着 ${r.i + 1}.${HORSES[r.i].name}`).join(' / ');
@@ -1279,7 +1241,7 @@
     // 勝ち馬はだいたい17〜19.5秒で完走、他は勝ち馬より確実に遅く（最大26秒程度）
     const winnerTime = 17000 + Math.random() * 2500;
     const totalTimes = HORSES.map((h, i) =>
-      i === horseWinnerIndex ? winnerTime : winnerTime + 1200 + Math.random() * 6500
+      i === horseWinnerIndex ? winnerTime : winnerTime + 250 + Math.random() * 2000
     );
 
     horseSegmentTimeouts = [];
@@ -1291,7 +1253,7 @@
     horseRaceStartTs = Date.now();
     horseRaceEstDuration = Math.max(...totalTimes);
     updateHorseCommentary();
-    horseCommentaryTimer = setInterval(updateHorseCommentary, 1000);
+    horseCommentaryTimer = setInterval(updateHorseCommentary, 700);
 
     horseFinishTimeout = setTimeout(() => {
       finishHorseRace();
