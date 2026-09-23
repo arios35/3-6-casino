@@ -7,6 +7,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Monoton&family=Cinzel:wght@600;900&display=swap" rel="stylesheet">
+
+<!-- アクセスカウンター用（Firebase Realtime Database） -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
 <style>
   :root {
     --gold: #ffd23f;
@@ -100,6 +105,20 @@
   @keyframes bulb-cycle {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.25; }
+  }
+
+  /* --- アクセスカウンター --- */
+  .access-counter {
+    display: block;
+    max-width: 440px;
+    margin: 0 auto 12px auto;
+    font-size: 12.5px;
+    font-weight: bold;
+    color: var(--neon-cyan);
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--neon-cyan);
+    border-radius: 20px;
+    padding: 6px 16px;
   }
 
   .token-bar {
@@ -633,6 +652,9 @@
   </div>
 </div>
 
+<p class="access-counter">👀 累計来場者数: <span id="total-visits">読み込み中...</span> 人目！</p>
+<p class="access-counter">🟢 現在アクセス中: <span id="online-count">読み込み中...</span> 人</p>
+
 <div class="token-bar">
   🎫 トークン: <span id="ticket-count-header">5</span> 枚
 </div>
@@ -773,6 +795,50 @@
       burst.appendChild(coin);
       setTimeout(() => coin.remove(), 2600);
     }
+  }
+
+  // ============================================================
+  // アクセスカウンター（Firebase Realtime Database）
+  // 保存先は casinoVisits / casinoPresence（ミニゲーム部屋とは別カウント）
+  // ============================================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyDojX62pnDQM-Q6FKuV5Q6OWhxvLVfMj7E",
+    authDomain: "minigames-ac2f0.firebaseapp.com",
+    databaseURL: "https://minigames-ac2f0-default-rtdb.firebaseio.com",
+    projectId: "minigames-ac2f0",
+    storageBucket: "minigames-ac2f0.firebasestorage.app",
+    messagingSenderId: "299215799836",
+    appId: "1:299215799836:web:dc6d913b875370670681d9",
+    measurementId: "G-GKD2H8VGXK"
+  };
+
+  try {
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 累計来場者数（全員の画面にリアルタイム反映）
+    const visitsRef = db.ref('casinoVisits');
+    visitsRef.on('value', (snap) => {
+      document.getElementById('total-visits').innerText = snap.val() || 0;
+    });
+    visitsRef.transaction((current) => (current || 0) + 1);
+
+    // 現在アクセス中の人数（タブを閉じたり回線が切れたら自動で人数から消える）
+    const presenceRef = db.ref('casinoPresence');
+    const myPresenceRef = presenceRef.push();
+    db.ref('.info/connected').on('value', (snap) => {
+      if (snap.val() === true) {
+        myPresenceRef.onDisconnect().remove();
+        myPresenceRef.set(true);
+      }
+    });
+    presenceRef.on('value', (snap) => {
+      document.getElementById('online-count').innerText = snap.numChildren();
+    });
+  } catch (e) {
+    console.error('アクセスカウンターの初期化に失敗しました:', e);
+    document.getElementById('total-visits').innerText = '準備中';
+    document.getElementById('online-count').innerText = '準備中';
   }
 
   // ============================================================
@@ -1243,6 +1309,7 @@
     const totalTimes = HORSES.map((h, i) =>
       i === horseWinnerIndex ? winnerTime : winnerTime + 250 + Math.random() * 2000
     );
+    horseTotalTimes = totalTimes;
 
     horseSegmentTimeouts = [];
     HORSES.forEach((h, i) => {
