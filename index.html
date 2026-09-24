@@ -633,8 +633,8 @@
     filter: drop-shadow(0 0 6px #000);
   }
   .roulette-wheel-outer {
-    width: 230px;
-    height: 230px;
+    width: 310px;
+    height: 310px;
     border-radius: 50%;
     background: radial-gradient(circle, #2b1206 0%, #1a0a06 70%, #0d0503 100%);
     border: 6px solid var(--gold-dark);
@@ -645,8 +645,8 @@
     position: relative;
   }
   .roulette-wheel {
-    width: 200px;
-    height: 200px;
+    width: 270px;
+    height: 270px;
     border-radius: 50%;
     position: relative;
     transition: transform 12s cubic-bezier(0.1, 0.55, 0.15, 1);
@@ -654,21 +654,21 @@
   .roulette-number {
     position: absolute;
     top: 50%; left: 50%;
-    width: 20px;
-    height: 100px;
-    margin-left: -10px;
-    margin-top: -100px;
+    width: 24px;
+    height: 135px;
+    margin-left: -12px;
+    margin-top: -135px;
     transform-origin: 50% 100%;
     text-align: center;
-    font-size: 9px;
+    font-size: 12px;
     font-weight: bold;
     color: #fff;
     padding-top: 4px;
   }
   .roulette-center {
     position: absolute;
-    width: 44px;
-    height: 44px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     background: radial-gradient(circle, #ffe98a, var(--gold-dark));
     box-shadow: 0 0 10px rgba(255,210,63,0.7);
@@ -1696,7 +1696,7 @@
       updateTickets(payout);
       if (outcome === 'blackjack' || outcome === 'win') {
         msg += `<br>🎫 ${payout.toLocaleString()}枚 獲得！`;
-        if (outcome === 'blackjack') celebrate(2, '🃏 BLACKJACK!!'); else spawnCoins(20);
+        if (outcome === 'blackjack') celebrate(2, '🃏 BLACKJACK!!'); else normalWin('bj', 20);
         missionStats.maxSingleWin = Math.max(missionStats.maxSingleWin, payout);
         saveMissionStats();
       }
@@ -1779,7 +1779,7 @@
     if (hl.mult >= 25) celebrate(3, `🔼 HIGH &amp; LOW<br>×${hl.mult.toFixed(0)} 大成功!!`);
     else if (hl.mult >= 10) celebrate(2, `🔼 ×${hl.mult.toFixed(1)} 大成功!!`);
     else if (hl.mult >= 3) celebrate(1, `🔼 ×${hl.mult.toFixed(1)}！`);
-    else spawnCoins(20);
+    else normalWin('hl', 20);
     missionStats.maxSingleWin = Math.max(missionStats.maxSingleWin, payout);
     saveMissionStats();
   }
@@ -1793,6 +1793,15 @@
   function updateHud() {
     document.getElementById('hud-tickets').innerText = tickets.toLocaleString();
     document.getElementById('hud-diamonds').innerText = diamonds.toLocaleString();
+  }
+
+  // VIPボタンで賭け金を積んだゲームは「VIPベット」扱い（クリアで解除）。
+  // VIPベットで当たると、通常演出より長く・大当たり演出より短い演出になる。
+  let vipBetUsed = { slot: false, roulette: false, horse: false, bj: false, hl: false };
+  function currentBet(g) { return { slot: slotBet, roulette: rouletteBet, horse: horseBet, bj: bjBet, hl: hlBet }[g]; }
+  function syncVipFlags() { Object.keys(vipBetUsed).forEach(g => { if (currentBet(g) === 0) vipBetUsed[g] = false; }); }
+  function normalWin(game, n) {
+    if (vipBetUsed[game]) celebrate(1, '👑 VIP WIN!! 👑'); else spawnCoins(n);
   }
 
   const VIP_PRICE_DIAMONDS = 3;
@@ -1809,7 +1818,7 @@
         const b = document.createElement('button');
         b.className = 'bet-btn vip';
         b.innerText = label;
-        b.onclick = () => addBet(g, v);
+        b.onclick = () => { const before = currentBet(g); addBet(g, v); if (currentBet(g) > before) vipBetUsed[g] = true; };
         row.insertBefore(b, clear);
       });
     });
@@ -1924,6 +1933,7 @@
     document.getElementById('horse-bet-total').innerText = horseBet.toLocaleString();
     document.getElementById('bj-bet-total').innerText = bjBet.toLocaleString();
     document.getElementById('hl-bet-total').innerText = hlBet.toLocaleString();
+    if (typeof syncVipFlags === 'function') syncVipFlags();
   }
 
 
@@ -2058,7 +2068,7 @@
       if (sym.key === 'seven') celebrate(3, '7️⃣7️⃣7️⃣<br>JACKPOT!!');
       else if (sym.key === 'diamond') celebrate(3, '💎 DIAMOND!! 💎');
       else if (sym.key === 'bell') celebrate(2, '🔔 BIG WIN!! 🔔');
-      else spawnCoins(25);
+      else normalWin('slot', 25);
     } else {
       const cherryCount = targets.filter(i => SYMBOLS[i].key === 'cherry').length;
       if (cherryCount === 2) {
@@ -2224,7 +2234,9 @@
     if (win) {
       updateTickets(earned);
       msg += `<br>🎉 的中！ 🎫 ${earned.toLocaleString()}枚 獲得！`;
-      if (selectedBetType === 'number') celebrate(2, '🎡 ピンポイント的中!!<br>36倍！'); else spawnCoins(20);
+      if (rouletteBet >= 1000000) celebrate(3, '🎡 超高額BET的中!!<br>🎫 ' + earned.toLocaleString() + '枚！');
+      else if (selectedBetType === 'number') celebrate(2, '🎡 ピンポイント的中!!<br>36倍！');
+      else normalWin('roulette', 20);
       recordRouletteWin(selectedBetType === 'number', earned);
     } else {
       msg += '<br>😢 残念、はずれ…';
@@ -2458,7 +2470,7 @@
       msg += `<br>🎉 的中！ 🎫 ${earned.toLocaleString()}枚 獲得！`;
       if (winnerIndex === HORSES.length - 1) celebrate(3, '🐎 大穴的中!!<br>ダークホース！');
       else if (winnerIndex === HORSES.length - 2) celebrate(2, '🐎 万馬券!!');
-      else spawnCoins(30);
+      else normalWin('horse', 30);
       recordHorseResult(true, earned, winnerIndex);
     } else {
       recordHorseResult(false, 0, winnerIndex);
