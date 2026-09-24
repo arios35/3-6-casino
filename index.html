@@ -374,6 +374,43 @@
   }
   .table-slot .slot-emoji { font-size: 36px; }
 
+  /* --- 銀行 --- */
+  .bank-balance {
+    text-align: center;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid var(--gold-dark);
+    border-radius: 14px;
+    padding: 12px 8px;
+    line-height: 1.8;
+    font-size: 13px;
+    color: var(--ink-dim);
+  }
+  .bank-balance .big { font-size: 26px; font-weight: 900; color: var(--gold); }
+  .bank-input {
+    width: 100%;
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    font-size: 16px;
+    text-align: center;
+  }
+  .bank-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .bank-actions .shop-btn { padding: 12px 6px; font-size: 13px; }
+  .leaderboard { margin-top: 20px; padding-top: 14px; border-top: 1px dashed rgba(255,210,63,0.3); }
+  .leaderboard-title { font-size: 13px; font-weight: bold; color: var(--gold); margin: 0 0 8px 0; }
+  .rank-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 13px;
+    padding: 6px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .rank-row:first-child { color: var(--gold); font-weight: bold; }
+  .rank-row.me { background: rgba(0,229,255,0.12); }
+  .rank-row span:nth-child(2) { flex: 1; text-align: left; margin-left: 8px; }
+
   /* --- ショップ --- */
   .shop-item {
     display: flex;
@@ -748,6 +785,8 @@
     <a class="lobby-btn" href="#cabinet-slot">🎰 スロット</a>
     <a class="lobby-btn" href="#cabinet-roulette">🎡 ルーレット</a>
     <a class="lobby-btn" href="#cabinet-horse">🐎 競馬</a>
+    <a class="lobby-btn" href="#cabinet-bank">🏦 銀行</a>
+    <a class="lobby-btn" href="#bank-ranking">🏆 預金ランキング</a>
     <a class="lobby-btn" href="#cabinet-shop">🛒 ショップ</a>
   </div>
   <p class="lobby-sub">🏆 コレクションテーブル（ショップで買った物を飾れるよ／タップで外す）</p>
@@ -869,6 +908,39 @@
   <div class="result-line" id="horse-result"></div>
 </div>
 
+<!-- 銀行 -->
+<div class="cabinet" id="cabinet-bank">
+  <div class="cabinet-header"><span class="cabinet-icon">🏦</span></div>
+  <p class="cabinet-title">CASINO BANK</p>
+  <p class="cabinet-desc">トークンを預けて安全に貯めよう。預けた額が多い順にランキングへ載るよ！（預けている間はカジノで使えません）</p>
+
+  <div class="bank-balance">
+    預金残高<br><span class="big" id="bank-balance">0</span> 枚<br>
+    所持トークン: <span id="bank-wallet">0</span> 枚
+  </div>
+
+  <input type="text" inputmode="numeric" pattern="[0-9]*" id="bank-amount-input" class="bank-input" placeholder="金額を入力" maxlength="10">
+  <div class="bet-row" style="margin:10px 0 0 0;">
+    <button class="bet-btn" onclick="addBankAmount(1000)">+1,000</button>
+    <button class="bet-btn" onclick="addBankAmount(10000)">+10,000</button>
+    <button class="bet-btn" onclick="addBankAmount(100000)">+100,000</button>
+    <button class="bet-btn clear" onclick="document.getElementById('bank-amount-input').value=''">クリア</button>
+  </div>
+  <div class="bank-actions">
+    <button class="shop-btn buy" onclick="bankDeposit()">預ける</button>
+    <button class="shop-btn" onclick="bankWithdraw()">引き出す</button>
+    <button class="shop-btn" onclick="bankDepositAll()">全額預ける</button>
+    <button class="shop-btn" onclick="bankWithdrawAll()">全額引き出す</button>
+  </div>
+  <div class="result-line" id="bank-message"></div>
+
+  <div class="leaderboard" id="bank-ranking">
+    <p class="leaderboard-title">🏆 預金ランキング TOP10</p>
+    <input type="text" id="bank-name-input" class="bank-input" style="margin:0 0 10px 0; padding:9px; font-size:14px;" maxlength="10" placeholder="ランキング用のなまえ（10文字まで）" onchange="saveBankName()">
+    <div id="bank-ranking-list"><p style="font-size:12px; color: var(--ink-dim);">読み込み中...</p></div>
+  </div>
+</div>
+
 <!-- ショップ -->
 <div class="cabinet" id="cabinet-shop">
   <div class="cabinet-header"><span class="cabinet-icon">🛒</span></div>
@@ -890,6 +962,8 @@
     tickets += amount;
     localStorage.setItem('minigameTickets', tickets);
     document.getElementById('ticket-count-header').innerText = tickets;
+    const w = document.getElementById('bank-wallet');
+    if (w) w.innerText = tickets.toLocaleString();
   }
 
   function spawnCoins(count) {
@@ -1001,6 +1075,105 @@
   refreshShopUI();
 
   // ============================================================
+  // 銀行 ＆ 預金ランキング
+  // ============================================================
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.innerText = str;
+    return div.innerHTML;
+  }
+
+  let bankBalance = parseInt(localStorage.getItem('casinoBankBalance') || '0', 10) || 0;
+  let bankName = localStorage.getItem('casinoBankName') || '';
+  let bankPlayerId = localStorage.getItem('casinoPlayerId');
+  if (!bankPlayerId) {
+    bankPlayerId = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    localStorage.setItem('casinoPlayerId', bankPlayerId);
+  }
+  let bankRankRef = null;
+  let bankRanking = [];
+  document.getElementById('bank-name-input').value = bankName;
+
+  function refreshBankUI() {
+    document.getElementById('bank-balance').innerText = bankBalance.toLocaleString();
+    document.getElementById('bank-wallet').innerText = tickets.toLocaleString();
+  }
+
+  function saveBank() {
+    localStorage.setItem('casinoBankBalance', bankBalance);
+    refreshBankUI();
+    syncBankRanking();
+  }
+
+  // 預金がある間だけランキングに載せる（0枚になったら削除）
+  function syncBankRanking() {
+    if (!bankRankRef) return;
+    const entry = bankRankRef.child(bankPlayerId);
+    if (bankBalance > 0) {
+      entry.set({ name: (bankName || '名無しの暇人').slice(0, 10), balance: bankBalance, ts: Date.now() });
+    } else {
+      entry.remove();
+    }
+  }
+
+  function saveBankName() {
+    bankName = document.getElementById('bank-name-input').value.trim().slice(0, 10);
+    localStorage.setItem('casinoBankName', bankName);
+    syncBankRanking();
+  }
+
+  function renderBankRanking() {
+    const list = document.getElementById('bank-ranking-list');
+    if (!bankRanking.length) {
+      list.innerHTML = '<p style="font-size:12px; color: var(--ink-dim);">まだ預金者がいません。最初の預金者になろう！</p>';
+      return;
+    }
+    list.innerHTML = bankRanking.map((e, i) =>
+      `<div class="rank-row${e.id === bankPlayerId ? ' me' : ''}"><span>${i + 1}位</span><span>${escapeHtml(e.name || '名無しの暇人')}</span><span>${Number(e.balance).toLocaleString()}枚</span></div>`
+    ).join('');
+  }
+
+  function readBankAmount() {
+    const v = parseInt(document.getElementById('bank-amount-input').value.replace(/[^0-9]/g, ''), 10);
+    return (isNaN(v) || v <= 0) ? 0 : v;
+  }
+
+  function addBankAmount(v) {
+    const input = document.getElementById('bank-amount-input');
+    input.value = readBankAmount() + v;
+  }
+
+  function bankMessage(text) {
+    document.getElementById('bank-message').innerText = text;
+  }
+
+  function bankDeposit(amount) {
+    const amt = amount || readBankAmount();
+    if (amt <= 0) { alert('金額を入力してね！'); return; }
+    if (amt > tickets) { alert('トークンが足りません！'); return; }
+    updateTickets(-amt);
+    bankBalance += amt;
+    saveBank();
+    bankMessage(`🏦 ${amt.toLocaleString()}枚を預けました！`);
+  }
+
+  function bankWithdraw(amount) {
+    const amt = amount || readBankAmount();
+    if (amt <= 0) { alert('金額を入力してね！'); return; }
+    if (amt > bankBalance) { alert('預金残高が足りません！'); return; }
+    bankBalance -= amt;
+    updateTickets(amt);
+    saveBank();
+    bankMessage(`💰 ${amt.toLocaleString()}枚を引き出しました！`);
+  }
+
+  function bankDepositAll() { bankDeposit(tickets); }
+  function bankWithdrawAll() { bankWithdraw(bankBalance); }
+
+  refreshBankUI();
+  renderBankRanking();
+
+  // ============================================================
   // アクセスカウンター（Firebase Realtime Database）
   // 保存先は casinoVisits / casinoPresence（ミニゲーム部屋とは別カウント）
   // ============================================================
@@ -1038,10 +1211,21 @@
     presenceRef.on('value', (snap) => {
       document.getElementById('online-count').innerText = snap.numChildren();
     });
+
+    // 預金ランキング（預けた額が多い順TOP10）
+    bankRankRef = db.ref('casinoBankRanking');
+    bankRankRef.orderByChild('balance').limitToLast(10).on('value', (snap) => {
+      const arr = [];
+      snap.forEach((child) => { arr.push({ id: child.key, ...child.val() }); });
+      bankRanking = arr.sort((a, b) => b.balance - a.balance);
+      renderBankRanking();
+    });
+    syncBankRanking(); // 起動時に自分の預金をランキングへ反映
   } catch (e) {
     console.error('アクセスカウンターの初期化に失敗しました:', e);
     document.getElementById('total-visits').innerText = '準備中';
     document.getElementById('online-count').innerText = '準備中';
+    document.getElementById('bank-ranking-list').innerHTML = '<p style="font-size:12px; color: var(--ink-dim);">ランキング機能は準備中です。</p>';
   }
 
   // ============================================================
