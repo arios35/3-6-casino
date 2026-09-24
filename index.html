@@ -558,6 +558,47 @@
     100% { transform: translateY(110vh) rotate(720deg); opacity: 0.9; }
   }
 
+  .win-banner {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Cinzel', serif;
+    font-weight: 900;
+    text-align: center;
+    white-space: nowrap;
+    color: var(--gold);
+    text-shadow: 0 0 12px #ff8800, 0 0 28px #ff2fa0, 0 3px 0 #7a5c05;
+    animation: banner-pop 0.7s ease-out, banner-pulse 0.9s 0.7s ease-in-out infinite;
+    z-index: 2;
+  }
+  @keyframes banner-pop {
+    0%   { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    60%  { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+  @keyframes banner-pulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50%      { transform: translate(-50%, -50%) scale(1.12); }
+  }
+  .win-flash-layer {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 35%, rgba(255,230,120,0.65), rgba(255,47,160,0.25) 45%, transparent 75%);
+    opacity: 0;
+    animation: flash-pulse 0.7s ease-in-out infinite;
+  }
+  @keyframes flash-pulse {
+    0%, 100% { opacity: 0; }
+    50%      { opacity: 1; }
+  }
+  .coin.rich { animation-name: coin-fall-rich; }
+  @keyframes coin-fall-rich {
+    0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+    50%  { transform: translate(28px, 55vh) rotate(360deg); opacity: 1; }
+    100% { transform: translate(-20px, 112vh) rotate(900deg); opacity: 0.9; }
+  }
+
   /* --- ルーレット --- */
   .roulette-wrap {
     display: flex;
@@ -591,7 +632,7 @@
     height: 200px;
     border-radius: 50%;
     position: relative;
-    transition: transform 6s cubic-bezier(0.1, 0.55, 0.15, 1);
+    transition: transform 12s cubic-bezier(0.1, 0.55, 0.15, 1);
   }
   .roulette-number {
     position: absolute;
@@ -1051,7 +1092,7 @@
 <div class="cabinet" id="cabinet-hl">
   <div class="cabinet-header"><span class="cabinet-icon">🔼</span></div>
   <p class="cabinet-title">HIGH &amp; LOW</p>
-  <p class="cabinet-desc">次のカードが今のカードより「ハイ(大きい)」か「ロー(小さい)」かを当てよう！Aが最小、Kが最大で、同じ数字ははずれ。当てるたびに倍率が積み重なり、好きなタイミングで受け取れます（1回以上当てると受け取り可能。100倍で自動受け取り）。</p>
+  <p class="cabinet-desc">次のカードが今のカードより「ハイ(大きい)」か「ロー(小さい)」かを当てよう！Aが最小、Kが最大で、同じ数字ははずれ。当てるたびに倍率が積み重なり、好きなタイミングで受け取れます（1回以上当てると受け取り可能。1000倍で自動受け取り）。</p>
 
   <div class="hl-cards">
     <div id="hl-current"></div>
@@ -1632,7 +1673,7 @@
       updateTickets(payout);
       if (outcome === 'blackjack' || outcome === 'win') {
         msg += `<br>🎫 ${payout.toLocaleString()}枚 獲得！`;
-        spawnCoins(outcome === 'blackjack' ? 40 : 20);
+        if (outcome === 'blackjack') celebrate(2, '🃏 BLACKJACK!!'); else spawnCoins(20);
         missionStats.maxSingleWin = Math.max(missionStats.maxSingleWin, payout);
         saveMissionStats();
       }
@@ -1643,8 +1684,8 @@
   // ============================================================
   // ハイ＆ロー
   // ============================================================
-  const HL_EDGE = 0.97;      // 還元率（1.0未満でハウスエッジ）
-  const HL_MAX_MULT = 100;   // この倍率に達したら自動で受け取り
+  const HL_EDGE = 1.2;       // 還元率（1.0=公平。1.0より大きいとプレイヤー有利）
+  const HL_MAX_MULT = 1000;  // この倍率に達したら自動で受け取り
   let hlBet = 0;
   let hlActive = false;
   let hl = { cur: null, mult: 1, streak: 0, bet: 0 };
@@ -1709,7 +1750,10 @@
     updateTickets(payout);
     hlRender();
     document.getElementById('hl-result').innerHTML = `💰 受け取り！ ×${hl.mult.toFixed(2)}<br>🎫 ${payout.toLocaleString()}枚 獲得！`;
-    spawnCoins(20);
+    if (hl.mult >= 100) celebrate(3, `🔼 HIGH &amp; LOW<br>×${hl.mult.toFixed(0)} 大成功!!`);
+    else if (hl.mult >= 20) celebrate(2, `🔼 ×${hl.mult.toFixed(1)} 大成功!!`);
+    else if (hl.mult >= 5) celebrate(1, `🔼 ×${hl.mult.toFixed(1)}！`);
+    else spawnCoins(20);
     missionStats.maxSingleWin = Math.max(missionStats.maxSingleWin, payout);
     saveMissionStats();
   }
@@ -1799,6 +1843,45 @@
     document.getElementById('hl-bet-total').innerText = hlBet.toLocaleString();
   }
 
+
+  // 低確率の当たり用：長時間・豪華なコイン雨＋バナー＋フラッシュ
+  // tier 1=約5秒 / 2=約8秒 / 3=約12秒（最上級）
+  function celebrate(tier, label) {
+    const burst = document.getElementById('coin-burst');
+    const cfg = { 1: { ms: 5000, per: 6, size: 30 }, 2: { ms: 8000, per: 10, size: 38 }, 3: { ms: 12000, per: 16, size: 46 } }[tier];
+    const icons = ['🪙', '💰', '💎', '✨', '💵', '🪙', '🪙'];
+
+    const flash = document.createElement('div');
+    flash.className = 'win-flash-layer';
+    burst.appendChild(flash);
+
+    const banner = document.createElement('div');
+    banner.className = 'win-banner';
+    banner.style.fontSize = (22 + tier * 6) + 'px';
+    banner.innerHTML = label;
+    burst.appendChild(banner);
+
+    let elapsed = 0;
+    const iv = setInterval(() => {
+      for (let i = 0; i < cfg.per; i++) {
+        const coin = document.createElement('div');
+        coin.className = 'coin rich';
+        coin.innerText = icons[Math.floor(Math.random() * icons.length)];
+        coin.style.left = Math.random() * 100 + 'vw';
+        coin.style.fontSize = (18 + Math.random() * (cfg.size - 12)) + 'px';
+        const dur = 2.2 + Math.random() * 2;
+        coin.style.animationDuration = dur + 's';
+        burst.appendChild(coin);
+        setTimeout(() => coin.remove(), dur * 1000 + 100);
+      }
+      elapsed += 200;
+      if (elapsed >= cfg.ms) clearInterval(iv);
+    }, 200);
+
+    setTimeout(() => flash.remove(), cfg.ms * 0.6);
+    setTimeout(() => banner.remove(), cfg.ms + 800);
+  }
+
   // ============================================================
   // スロット
   // ============================================================
@@ -1882,7 +1965,10 @@
       earned = slotBet * sym.mult;
       msg = `${sym.emoji}${sym.emoji}${sym.emoji} 大当たり！！ ${sym.mult}倍！`;
       document.querySelector('.slot-machine').classList.add('win-flash');
-      spawnCoins(sym.key === 'seven' ? 60 : 25);
+      if (sym.key === 'seven') celebrate(3, '7️⃣7️⃣7️⃣<br>JACKPOT!!');
+      else if (sym.key === 'diamond') celebrate(3, '💎 DIAMOND!! 💎');
+      else if (sym.key === 'bell') celebrate(2, '🔔 BIG WIN!! 🔔');
+      else spawnCoins(25);
     } else {
       const cherryCount = targets.filter(i => SYMBOLS[i].key === 'cherry').length;
       if (cherryCount === 2) {
@@ -2017,7 +2103,7 @@
     const currentBase = wheelRotation % 360;
     let delta = targetWithinCircle - currentBase;
     while (delta < 0) delta += 360;
-    wheelRotation += 360 * 10 + delta;
+    wheelRotation += 360 * 18 + delta;
 
     const wheel = document.getElementById('roulette-wheel');
     wheel.style.transform = `rotate(${wheelRotation}deg)`;
@@ -2027,7 +2113,7 @@
       evaluateRouletteResult(winNumber);
       rouletteSpinning = false;
       document.getElementById('roulette-spin-btn').disabled = false;
-    }, 6500);
+    }, 12500);
   }
 
   function evaluateRouletteResult(winNumber) {
@@ -2048,7 +2134,7 @@
     if (win) {
       updateTickets(earned);
       msg += `<br>🎉 的中！ 🎫 ${earned.toLocaleString()}枚 獲得！`;
-      spawnCoins(selectedBetType === 'number' ? 50 : 20);
+      if (selectedBetType === 'number') celebrate(2, '🎡 ピンポイント的中!!<br>36倍！'); else spawnCoins(20);
       recordRouletteWin(selectedBetType === 'number', earned);
     } else {
       msg += '<br>😢 残念、はずれ…';
@@ -2280,7 +2366,9 @@
       const earned = horseBet * winnerHorse.odds;
       updateTickets(earned);
       msg += `<br>🎉 的中！ 🎫 ${earned.toLocaleString()}枚 獲得！`;
-      spawnCoins(30);
+      if (winnerIndex === HORSES.length - 1) celebrate(3, '🐎 大穴的中!!<br>ダークホース！');
+      else if (winnerIndex === HORSES.length - 2) celebrate(2, '🐎 万馬券!!');
+      else spawnCoins(30);
       recordHorseResult(true, earned, winnerIndex);
     } else {
       recordHorseResult(false, 0, winnerIndex);
