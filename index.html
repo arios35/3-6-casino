@@ -28,7 +28,7 @@
 
   body {
     margin: 0;
-    padding: 24px 14px 70px 14px;
+    padding: 58px 14px 70px 14px;
     background:
       radial-gradient(circle at 50% 0%, #2a0a0a 0%, #0d0403 55%, #000000 100%);
     color: var(--ink);
@@ -307,10 +307,10 @@
 
   /* --- ロビーテーブル（メニュー） --- */
   .lobby-table {
-    max-width: 440px;
+    max-width: 640px;
     margin: 0 auto 40px auto;
-    padding: 20px 14px 22px 14px;
-    border-radius: 28px;
+    padding: 30px 18px 30px 18px;
+    border-radius: 32px;
     background: radial-gradient(ellipse at 50% 35%, #138a4f 0%, var(--green-felt) 58%, #073d22 100%);
     border: 7px solid #5a3510;
     box-shadow: 0 0 0 2px var(--gold-dark), 0 0 28px rgba(0,0,0,0.7), inset 0 0 34px rgba(0,0,0,0.55);
@@ -319,42 +319,42 @@
   .lobby-title {
     font-family: 'Cinzel', serif;
     font-weight: 900;
-    font-size: 20px;
-    letter-spacing: 3px;
-    margin: 0 0 14px 0;
+    font-size: 28px;
+    letter-spacing: 4px;
+    margin: 0 0 20px 0;
     color: var(--gold);
     text-shadow: 0 0 10px rgba(255,210,63,0.5);
   }
   .lobby-menu {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    gap: 14px;
   }
   .lobby-btn {
     display: block;
-    padding: 14px 6px;
-    border-radius: 14px;
+    padding: 24px 6px;
+    border-radius: 18px;
     background: rgba(0,0,0,0.35);
     border: 2px solid var(--gold);
     color: var(--ink);
-    font-size: 14px;
+    font-size: 17px;
     font-weight: bold;
     text-decoration: none;
   }
   .lobby-btn:active { background: rgba(255,210,63,0.25); }
   .lobby-sub {
-    font-size: 12px;
+    font-size: 14px;
     color: #d9f5e3;
-    margin: 20px 0 10px 0;
+    margin: 28px 0 14px 0;
   }
   .table-slots {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+    gap: 14px;
   }
   .table-slot {
-    min-height: 92px;
-    border-radius: 16px;
+    min-height: 140px;
+    border-radius: 20px;
     border: 2px dashed rgba(255,210,63,0.4);
     display: flex;
     flex-direction: column;
@@ -362,7 +362,7 @@
     justify-content: center;
     padding: 6px 2px;
     color: rgba(255,255,255,0.35);
-    font-size: 11px;
+    font-size: 13px;
     line-height: 1.4;
   }
   .table-slot.filled {
@@ -372,7 +372,7 @@
     color: var(--ink);
     cursor: pointer;
   }
-  .table-slot .slot-emoji { font-size: 36px; }
+  .table-slot .slot-emoji { font-size: 56px; }
 
   /* --- 銀行 --- */
   .bank-balance {
@@ -411,6 +411,23 @@
   .rank-row.me { background: rgba(0,229,255,0.12); }
   .rank-row span:nth-child(2) { flex: 1; text-align: left; margin-left: 8px; }
 
+  .ticket-hud {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 9000;
+    display: flex;
+    gap: 12px;
+    padding: 6px 14px;
+    background: rgba(0,0,0,0.78);
+    border: 1px solid var(--gold);
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--gold);
+    box-shadow: 0 0 10px rgba(0,0,0,0.6);
+  }
+  .bet-btn.vip { border-color: var(--gold); color: var(--gold); }
   .token-bar { flex-wrap: wrap; justify-content: center; gap: 4px 16px; }
   .mission-open-btn {
     display: block;
@@ -899,6 +916,8 @@
 
 <div id="coin-burst"></div>
 
+<div class="ticket-hud"><span>🎫 <span id="hud-tickets">0</span></span><span>💎 <span id="hud-diamonds">0</span></span></div>
+
 <button class="mission-open-btn" onclick="toggleMissions()">🎯 ミッション<span class="mission-badge" id="mission-badge" style="display:none;"></span></button>
 <div class="mission-panel" id="mission-panel">
   <p style="font-size:12px; color: var(--ink-dim); margin:2px 4px 6px 4px;">条件を達成したら「🎁 受け取る」でGET！</p>
@@ -1159,6 +1178,8 @@
   <p class="cabinet-desc">ダイヤをトークンに交換したり、高級品をトークンで購入して、ロビーのテーブルに飾ろう！（購入品は端末に保存されます）</p>
   <p class="mission-section">💎 ダイヤ交換所</p>
   <div id="diamond-shop-list"></div>
+  <p class="mission-section">👑 VIP</p>
+  <div id="vip-shop-list"></div>
   <p class="mission-section">🛍️ 高級品</p>
   <div id="casino-shop-list"></div>
   <div class="result-line" id="shop-message"></div>
@@ -1178,6 +1199,7 @@
     document.getElementById('ticket-count-header').innerText = tickets;
     const w = document.getElementById('bank-wallet');
     if (w) w.innerText = tickets.toLocaleString();
+    if (typeof updateHud === 'function') updateHud();
   }
 
   function spawnCoins(count) {
@@ -1399,6 +1421,7 @@
     diamonds += n;
     localStorage.setItem('casinoDiamonds', diamonds);
     document.getElementById('diamond-count').innerText = diamonds;
+    updateHud();
   }
 
   const DIAMOND_EXCHANGE = [
@@ -1765,6 +1788,63 @@
   hlRender();
 
   // ============================================================
+  // 左上に固定表示するトークン/ダイヤ ＆ VIP会員証
+  // ============================================================
+  function updateHud() {
+    document.getElementById('hud-tickets').innerText = tickets.toLocaleString();
+    document.getElementById('hud-diamonds').innerText = diamonds.toLocaleString();
+  }
+
+  const VIP_PRICE_DIAMONDS = 3;
+  const VIP_BET_BUTTONS = [[10000, '+10,000'], [100000, '+100,000'], [500000, '+500,000']];
+  let isVip = localStorage.getItem('casinoVip') === '1';
+
+  function applyVipBetButtons() {
+    if (!isVip) return;
+    ['slot', 'roulette', 'horse', 'bj', 'hl'].forEach(g => {
+      const row = document.getElementById(g + '-bet-row');
+      if (!row || row.querySelector('.vip')) return;
+      const clear = row.querySelector('.clear');
+      VIP_BET_BUTTONS.forEach(([v, label]) => {
+        const b = document.createElement('button');
+        b.className = 'bet-btn vip';
+        b.innerText = label;
+        b.onclick = () => addBet(g, v);
+        row.insertBefore(b, clear);
+      });
+    });
+  }
+
+  function renderVipShop() {
+    document.getElementById('vip-shop-list').innerHTML = `<div class="shop-item">
+      <div class="shop-item-info">
+        <span class="shop-item-emoji">💳</span>
+        <div><div class="shop-item-name">VIP会員証</div>
+        <div class="shop-item-price">💎 ${VIP_PRICE_DIAMONDS}個</div>
+        <div style="font-size:11px; color:var(--ink-dim);">全ゲームに +1万 / +10万 / +50万 のBETボタンが追加</div></div>
+      </div>
+      ${isVip ? '<span class="mission-state">✅ 所持済み</span>' : '<button class="shop-btn buy" onclick="buyVip()">購入</button>'}
+    </div>`;
+  }
+
+  function buyVip() {
+    if (isVip) return;
+    if (diamonds < VIP_PRICE_DIAMONDS) { alert('ダイヤが足りません！'); return; }
+    if (!confirm(`VIP会員証を 💎${VIP_PRICE_DIAMONDS}個で購入しますか？`)) return;
+    addDiamonds(-VIP_PRICE_DIAMONDS);
+    isVip = true;
+    localStorage.setItem('casinoVip', '1');
+    applyVipBetButtons();
+    renderVipShop();
+    document.getElementById('shop-message').innerText = '👑 VIP会員証を購入！全ゲームに大口BETボタンが追加されました。';
+    celebrate(1, '👑 VIP MEMBER 👑');
+  }
+
+  updateHud();
+  applyVipBetButtons();
+  renderVipShop();
+
+  // ============================================================
   // アクセスカウンター（Firebase Realtime Database）
   // 保存先は casinoVisits / casinoPresence（ミニゲーム部屋とは別カウント）
   // ============================================================
@@ -1889,14 +1969,15 @@
   // スロット
   // ============================================================
   const SYMBOLS = [
-    { key: 'cherry',  emoji: '🍒', weight: 22, mult: 2 },
-    { key: 'lemon',   emoji: '🍋', weight: 32, mult: 3 },
-    { key: 'orange',  emoji: '🍊', weight: 28, mult: 5 },
-    { key: 'grape',   emoji: '🍇', weight: 10, mult: 8 },
+    { key: 'cherry',  emoji: '🍒', weight: 30, mult: 2 },
+    { key: 'lemon',   emoji: '🍋', weight: 28, mult: 3 },
+    { key: 'orange',  emoji: '🍊', weight: 22, mult: 5 },
+    { key: 'grape',   emoji: '🍇', weight: 12, mult: 8 },
     { key: 'bell',    emoji: '🔔', weight: 5,  mult: 30 },
     { key: 'diamond', emoji: '💎', weight: 2,  mult: 100 },
     { key: 'seven',   emoji: '7️⃣', weight: 1,  mult: 777 }
   ];
+  const SLOT_ASSIST_RATE = 0.12; // 🍒🍋🍊の3つ揃えが確定で出る確率
   const SLOT_SYMBOL_HEIGHT = 72;
   const SLOT_STRIP_REPEAT = 10;
   let slotBet = 0;
@@ -1945,7 +2026,13 @@
     document.getElementById('slot-result').innerText = '';
     document.querySelector('.slot-machine').classList.remove('win-flash');
 
-    const targets = [weightedRandomSymbolIndex(), weightedRandomSymbolIndex(), weightedRandomSymbolIndex()];
+    let targets = [weightedRandomSymbolIndex(), weightedRandomSymbolIndex(), weightedRandomSymbolIndex()];
+    // 出やすさアシスト：一定確率で 🍒🍋🍊 のどれかを3つ揃えにする（高配当の絵柄は対象外）
+    if (Math.random() < SLOT_ASSIST_RATE) {
+      const r = Math.random() * 100;
+      const idx = r < 40 ? 0 : (r < 75 ? 1 : 2);
+      targets = [idx, idx, idx];
+    }
     const durations = [1400, 1900, 2500];
     [0, 1, 2].forEach(i => {
       spinReelTo(document.getElementById('reel-' + i), targets[i], durations[i]);
