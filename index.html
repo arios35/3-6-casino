@@ -1092,7 +1092,7 @@
 <div class="cabinet" id="cabinet-hl">
   <div class="cabinet-header"><span class="cabinet-icon">🔼</span></div>
   <p class="cabinet-title">HIGH &amp; LOW</p>
-  <p class="cabinet-desc">次のカードが今のカードより「ハイ(大きい)」か「ロー(小さい)」かを当てよう！Aが最小、Kが最大で、同じ数字ははずれ。当てるたびに倍率が積み重なり、好きなタイミングで受け取れます（1回以上当てると受け取り可能。20倍で自動受け取り）。</p>
+  <p class="cabinet-desc">次のカードが今のカードより「ハイ(大きい)」か「ロー(小さい)」かを当てよう！Aが最小、Kが最大で、同じ数字ははずれ。当てるたびに倍率が積み重なり、好きなタイミングで受け取れます（1回以上当てると受け取り可能。4連続以上で倍率ボーナス！50倍で自動受け取り）。</p>
 
   <div class="hl-cards">
     <div id="hl-current"></div>
@@ -1685,7 +1685,9 @@
   // ハイ＆ロー
   // ============================================================
   const HL_EDGE = 0.80;      // 還元率（1.0未満でハウスエッジ）
-  const HL_MAX_MULT = 20;    // この倍率に達したら自動で受け取り
+  const HL_MAX_MULT = 50;    // この倍率に達したら自動で受け取り
+  const HL_BONUS_STREAK = 4; // この連続的中数に達した当たりから倍率ボーナス
+  const HL_STREAK_BONUS = 1.3; // ボーナス倍率（各当たりの倍率にかかる）
   let hlBet = 0;
   let hlActive = false;
   let hl = { cur: null, mult: 1, streak: 0, bet: 0 };
@@ -1693,7 +1695,8 @@
   function hlWinCount(dir) { return dir === 'high' ? 12 - hl.cur.r : hl.cur.r; }
   function hlFactor(dir) {
     const w = hlWinCount(dir);
-    return w > 0 ? Math.round((13 / w) * HL_EDGE * 100) / 100 : 0;
+    const bonus = (hl.streak + 1 >= HL_BONUS_STREAK) ? HL_STREAK_BONUS : 1;
+    return w > 0 ? Math.round((13 / w) * HL_EDGE * bonus * 100) / 100 : 0;
   }
   function hlRender() {
     document.getElementById('hl-current').innerHTML = hl.cur ? cardHtml(hl.cur, false) : '';
@@ -1732,7 +1735,7 @@
       hl.streak++;
       hl.cur = next;
       if (hl.mult >= HL_MAX_MULT) { hlRender(); hlCashout(); return; }
-      document.getElementById('hl-result').innerText = `⭕ 的中！ ${hl.streak}連続！`;
+      document.getElementById('hl-result').innerText = `⭕ 的中！ ${hl.streak}連続！` + (hl.streak + 1 >= HL_BONUS_STREAK ? ' 🔥 連続ボーナス発動中！' : '');
       hlRender();
     } else {
       hlActive = false;
@@ -1750,8 +1753,8 @@
     updateTickets(payout);
     hlRender();
     document.getElementById('hl-result').innerHTML = `💰 受け取り！ ×${hl.mult.toFixed(2)}<br>🎫 ${payout.toLocaleString()}枚 獲得！`;
-    if (hl.mult >= 15) celebrate(3, `🔼 HIGH &amp; LOW<br>×${hl.mult.toFixed(0)} 大成功!!`);
-    else if (hl.mult >= 7) celebrate(2, `🔼 ×${hl.mult.toFixed(1)} 大成功!!`);
+    if (hl.mult >= 25) celebrate(3, `🔼 HIGH &amp; LOW<br>×${hl.mult.toFixed(0)} 大成功!!`);
+    else if (hl.mult >= 10) celebrate(2, `🔼 ×${hl.mult.toFixed(1)} 大成功!!`);
     else if (hl.mult >= 3) celebrate(1, `🔼 ×${hl.mult.toFixed(1)}！`);
     else spawnCoins(20);
     missionStats.maxSingleWin = Math.max(missionStats.maxSingleWin, payout);
@@ -1886,12 +1889,12 @@
   // スロット
   // ============================================================
   const SYMBOLS = [
-    { key: 'cherry',  emoji: '🍒', weight: 30, mult: 2 },
-    { key: 'lemon',   emoji: '🍋', weight: 25, mult: 3 },
-    { key: 'orange',  emoji: '🍊', weight: 20, mult: 5 },
-    { key: 'grape',   emoji: '🍇', weight: 15, mult: 8 },
-    { key: 'bell',    emoji: '🔔', weight: 6,  mult: 30 },
-    { key: 'diamond', emoji: '💎', weight: 3,  mult: 100 },
+    { key: 'cherry',  emoji: '🍒', weight: 22, mult: 2 },
+    { key: 'lemon',   emoji: '🍋', weight: 32, mult: 3 },
+    { key: 'orange',  emoji: '🍊', weight: 28, mult: 5 },
+    { key: 'grape',   emoji: '🍇', weight: 10, mult: 8 },
+    { key: 'bell',    emoji: '🔔', weight: 5,  mult: 30 },
+    { key: 'diamond', emoji: '💎', weight: 2,  mult: 100 },
     { key: 'seven',   emoji: '7️⃣', weight: 1,  mult: 777 }
   ];
   const SLOT_SYMBOL_HEIGHT = 72;
