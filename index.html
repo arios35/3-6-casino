@@ -1092,7 +1092,7 @@
 <div class="cabinet" id="cabinet-hl">
   <div class="cabinet-header"><span class="cabinet-icon">🔼</span></div>
   <p class="cabinet-title">HIGH &amp; LOW</p>
-  <p class="cabinet-desc">次のカードが今のカードより「ハイ(大きい)」か「ロー(小さい)」かを当てよう！Aが最小、Kが最大で、同じ数字ははずれ。当てるたびに倍率が積み重なり、好きなタイミングで受け取れます（1回以上当てると受け取り可能。50倍で自動受け取り）。</p>
+  <p class="cabinet-desc">次のカードが今のカードより「ハイ(大きい)」か「ロー(小さい)」かを当てよう！Aが最小、Kが最大で、同じ数字ははずれ。当てるたびに倍率が積み重なり、好きなタイミングで受け取れます（1回以上当てると受け取り可能。20倍で自動受け取り）。</p>
 
   <div class="hl-cards">
     <div id="hl-current"></div>
@@ -1684,8 +1684,8 @@
   // ============================================================
   // ハイ＆ロー
   // ============================================================
-  const HL_EDGE = 0.90;      // 還元率（1.0未満でハウスエッジ）
-  const HL_MAX_MULT = 50;    // この倍率に達したら自動で受け取り
+  const HL_EDGE = 0.80;      // 還元率（1.0未満でハウスエッジ）
+  const HL_MAX_MULT = 20;    // この倍率に達したら自動で受け取り
   let hlBet = 0;
   let hlActive = false;
   let hl = { cur: null, mult: 1, streak: 0, bet: 0 };
@@ -1750,9 +1750,9 @@
     updateTickets(payout);
     hlRender();
     document.getElementById('hl-result').innerHTML = `💰 受け取り！ ×${hl.mult.toFixed(2)}<br>🎫 ${payout.toLocaleString()}枚 獲得！`;
-    if (hl.mult >= 30) celebrate(3, `🔼 HIGH &amp; LOW<br>×${hl.mult.toFixed(0)} 大成功!!`);
-    else if (hl.mult >= 10) celebrate(2, `🔼 ×${hl.mult.toFixed(1)} 大成功!!`);
-    else if (hl.mult >= 4) celebrate(1, `🔼 ×${hl.mult.toFixed(1)}！`);
+    if (hl.mult >= 15) celebrate(3, `🔼 HIGH &amp; LOW<br>×${hl.mult.toFixed(0)} 大成功!!`);
+    else if (hl.mult >= 7) celebrate(2, `🔼 ×${hl.mult.toFixed(1)} 大成功!!`);
+    else if (hl.mult >= 3) celebrate(1, `🔼 ×${hl.mult.toFixed(1)}！`);
     else spawnCoins(20);
     missionStats.maxSingleWin = Math.max(missionStats.maxSingleWin, payout);
     saveMissionStats();
