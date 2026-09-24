@@ -1679,7 +1679,7 @@
     document.getElementById('bj-deal-btn').disabled = playing;
     document.getElementById('bj-hit-btn').disabled = !playing;
     document.getElementById('bj-stand-btn').disabled = !playing;
-    document.getElementById('bj-double-btn').disabled = !(playing && bj.player.length === 2 && tickets >= bj.bet);
+    document.getElementById('bj-double-btn').disabled = !(playing && bj.player.length === 2 && tickets >= bj.bet && bj.bet * 2 <= MAX_BET);
   }
 
   function bjDeal() {
@@ -1709,7 +1709,7 @@
   }
 
   function bjDouble() {
-    if (!bjActive || bj.player.length !== 2 || tickets < bj.bet) return;
+    if (!bjActive || bj.player.length !== 2 || tickets < bj.bet || bj.bet * 2 > MAX_BET) return;
     updateTickets(-bj.bet);
     bj.bet *= 2;
     bj.player.push(bj.deck.pop());
@@ -1901,7 +1901,7 @@
   // カード記憶（5枚のうち1枚だけ違うカードをシャッフルから追う）
   // ============================================================
   // 正解ラウンド数ごとの累計倍率。最後まで正解すると自動で受け取り。
-  const MEM_MULTS = [1.1, 1.3, 1.6, 2.5, 4, 7, 12, 20, 35, 60, 100, 200];
+  const MEM_MULTS = [1.1, 1.3, 1.6, 2.1, 4, 7, 12, 20, 35, 60, 100, 200];
   const MEM_SLOT_STEP = 62;
   let memBet = 0;
   let memActive = false;
@@ -2101,13 +2101,14 @@
   // ============================================================
   // 賭け金：ボタンを押した分だけ加算（クリアで0に戻す）
   // ============================================================
+  const MAX_BET = 1000000;
   function addBet(game, v) {
-    if (game === 'slot') { if (slotSpinning) return; slotBet += v; }
-    if (game === 'roulette') { if (rouletteSpinning) return; rouletteBet += v; }
-    if (game === 'horse') { if (horseRacing) return; horseBet += v; }
-    if (game === 'bj') { if (bjActive) return; bjBet += v; }
-    if (game === 'hl') { if (hlActive) return; hlBet += v; }
-    if (game === 'mem') { if (memActive) return; memBet += v; }
+    if (game === 'slot') { if (slotSpinning) return; slotBet = Math.min(MAX_BET, slotBet + v); }
+    if (game === 'roulette') { if (rouletteSpinning) return; rouletteBet = Math.min(MAX_BET, rouletteBet + v); }
+    if (game === 'horse') { if (horseRacing) return; horseBet = Math.min(MAX_BET, horseBet + v); }
+    if (game === 'bj') { if (bjActive) return; bjBet = Math.min(MAX_BET, bjBet + v); }
+    if (game === 'hl') { if (hlActive) return; hlBet = Math.min(MAX_BET, hlBet + v); }
+    if (game === 'mem') { if (memActive) return; memBet = Math.min(MAX_BET, memBet + v); }
     refreshBetTotals();
   }
   function clearBet(game) {
