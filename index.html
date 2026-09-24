@@ -411,6 +411,59 @@
   .rank-row.me { background: rgba(0,229,255,0.12); }
   .rank-row span:nth-child(2) { flex: 1; text-align: left; margin-left: 8px; }
 
+  .token-bar { flex-wrap: wrap; justify-content: center; gap: 4px 16px; }
+  .mission-open-btn {
+    display: block;
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto 14px auto;
+    padding: 12px;
+    border-radius: 16px;
+    border: 2px solid var(--neon-pink);
+    background: rgba(255,47,160,0.15);
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 14px rgba(255,47,160,0.3);
+  }
+  .mission-badge {
+    display: inline-block;
+    min-width: 20px;
+    padding: 1px 6px;
+    margin-left: 6px;
+    border-radius: 10px;
+    background: var(--neon-pink);
+    color: #fff;
+    font-size: 12px;
+  }
+  .mission-panel {
+    display: none;
+    max-width: 440px;
+    margin: 0 auto 18px auto;
+    padding: 12px;
+    background: rgba(0,0,0,0.5);
+    border: 2px solid var(--gold-dark);
+    border-radius: 16px;
+    text-align: left;
+  }
+  .mission-section { font-size: 13px; font-weight: bold; color: var(--gold); margin: 10px 2px 8px 2px; }
+  .mission-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .mission-item.achieved { background: rgba(255,210,63,0.13); border: 1px solid rgba(255,210,63,0.45); }
+  .mission-item-title { font-weight: bold; font-size: 13.5px; }
+  .mission-item-desc { font-size: 11.5px; color: var(--ink-dim); margin: 2px 0; }
+  .mission-item-reward { font-size: 12px; color: var(--gold); font-weight: bold; }
+  .mission-state { font-size: 11px; color: var(--ink-dim); white-space: nowrap; }
+
   /* --- ショップ --- */
   .shop-item {
     display: flex;
@@ -758,6 +811,12 @@
 
 <div id="coin-burst"></div>
 
+<button class="mission-open-btn" onclick="toggleMissions()">🎯 ミッション<span class="mission-badge" id="mission-badge" style="display:none;"></span></button>
+<div class="mission-panel" id="mission-panel">
+  <p style="font-size:12px; color: var(--ink-dim); margin:2px 4px 6px 4px;">条件を達成したら「🎁 受け取る」でGET！</p>
+  <div id="mission-list"></div>
+</div>
+
 <a href="https://arios35.github.io/3-6-minigames/" class="back-link">⟵ 3-6 ミニゲーム部屋に戻る</a>
 
 <div class="casino-marquee">
@@ -775,7 +834,7 @@
 <p class="access-counter">🟢 現在アクセス中: <span id="online-count">読み込み中...</span> 人</p>
 
 <div class="token-bar">
-  🎫 トークン: <span id="ticket-count-header">5</span> 枚
+  <span>🎫 トークン: <span id="ticket-count-header">5</span> 枚</span><span>💎 ダイヤ: <span id="diamond-count">0</span> 個</span>
 </div>
 
 <!-- ロビー（メニュー）テーブル -->
@@ -945,7 +1004,10 @@
 <div class="cabinet" id="cabinet-shop">
   <div class="cabinet-header"><span class="cabinet-icon">🛒</span></div>
   <p class="cabinet-title">VIP SHOP</p>
-  <p class="cabinet-desc">高級品をトークンで購入して、ロビーのテーブルに飾ろう！（購入品は端末に保存されます）</p>
+  <p class="cabinet-desc">ダイヤをトークンに交換したり、高級品をトークンで購入して、ロビーのテーブルに飾ろう！（購入品は端末に保存されます）</p>
+  <p class="mission-section">💎 ダイヤ交換所</p>
+  <div id="diamond-shop-list"></div>
+  <p class="mission-section">🛍️ 高級品</p>
   <div id="casino-shop-list"></div>
   <div class="result-line" id="shop-message"></div>
 </div>
@@ -1045,6 +1107,7 @@
     if (!confirm(`「${item.name}」を ${item.price.toLocaleString()}枚で購入しますか？`)) return;
     updateTickets(-item.price);
     ownedShopItems.push(id);
+    recordStat('purchases');
     const empty = placedShopItems.indexOf(null);
     if (empty !== -1) placedShopItems[empty] = id; // 空きがあれば自動でテーブルに飾る
     saveShopState();
@@ -1101,6 +1164,7 @@
 
   function saveBank() {
     localStorage.setItem('casinoBankBalance', bankBalance);
+    trackBank();
     refreshBankUI();
     syncBankRanking();
   }
@@ -1172,6 +1236,186 @@
 
   refreshBankUI();
   renderBankRanking();
+
+  // ============================================================
+  // ダイヤ通貨 ＆ ダイヤ交換所
+  // ============================================================
+  let diamonds = parseInt(localStorage.getItem('casinoDiamonds') || '0', 10) || 0;
+  document.getElementById('diamond-count').innerText = diamonds;
+
+  function addDiamonds(n) {
+    diamonds += n;
+    localStorage.setItem('casinoDiamonds', diamonds);
+    document.getElementById('diamond-count').innerText = diamonds;
+  }
+
+  const DIAMOND_EXCHANGE = [
+    { diamonds: 10, tickets: 100000 },
+    { diamonds: 20, tickets: 250000 },
+    { diamonds: 30, tickets: 500000 },
+    { diamonds: 45, tickets: 1000000 }
+  ];
+
+  function renderDiamondShop() {
+    document.getElementById('diamond-shop-list').innerHTML = DIAMOND_EXCHANGE.map((x, i) =>
+      `<div class="shop-item">
+        <div class="shop-item-info">
+          <span class="shop-item-emoji">💎</span>
+          <div><div class="shop-item-name">💎 ${x.diamonds}個 → 🎫 ${x.tickets.toLocaleString()}枚</div></div>
+        </div>
+        <button class="shop-btn buy" onclick="exchangeDiamonds(${i})">交換</button>
+      </div>`).join('');
+  }
+
+  function exchangeDiamonds(i) {
+    const x = DIAMOND_EXCHANGE[i];
+    if (diamonds < x.diamonds) { alert('ダイヤが足りません！'); return; }
+    if (!confirm(`💎${x.diamonds}個を 🎫${x.tickets.toLocaleString()}枚に交換しますか？`)) return;
+    addDiamonds(-x.diamonds);
+    updateTickets(x.tickets);
+    document.getElementById('shop-message').innerText = `🎉 🎫${x.tickets.toLocaleString()}枚と交換しました！`;
+    spawnCoins(30);
+  }
+  renderDiamondShop();
+
+  // ============================================================
+  // ミッション（ログインボーナス・通常・激ムズ）
+  // ============================================================
+  let missionStats = {};
+  try { missionStats = JSON.parse(localStorage.getItem('casinoMissionStats') || '{}'); } catch (e) { missionStats = {}; }
+  ['slotSpins','rouletteSpins','horseRaces','slotWins','slotBellPlus','slotSeven','rouletteNumberHits',
+   'horseWins','horseDarkWins','horseStreak','horseBestStreak','maxSingleWin','purchases','maxBank']
+    .forEach(k => { missionStats[k] = missionStats[k] || 0; });
+  missionStats.maxBank = Math.max(missionStats.maxBank, bankBalance);
+
+  let claimedMissions = [];
+  try { claimedMissions = JSON.parse(localStorage.getItem('casinoClaimedMissions') || '[]'); } catch (e) { claimedMissions = []; }
+
+  function saveMissionStats() {
+    localStorage.setItem('casinoMissionStats', JSON.stringify(missionStats));
+    updateMissionBadge();
+  }
+  function recordStat(key) { missionStats[key]++; saveMissionStats(); }
+  function trackBank() {
+    if (bankBalance > missionStats.maxBank) { missionStats.maxBank = bankBalance; saveMissionStats(); }
+  }
+  function recordSlotResult(targets, earned) {
+    if (targets[0] === targets[1] && targets[1] === targets[2]) {
+      const key = SYMBOLS[targets[0]].key;
+      missionStats.slotWins++;
+      if (key === 'bell' || key === 'diamond' || key === 'seven') missionStats.slotBellPlus++;
+      if (key === 'seven') missionStats.slotSeven++;
+    }
+    missionStats.maxSingleWin = Math.max(missionStats.maxSingleWin, earned);
+    saveMissionStats();
+  }
+  function recordRouletteWin(isNumber, earned) {
+    if (isNumber) missionStats.rouletteNumberHits++;
+    missionStats.maxSingleWin = Math.max(missionStats.maxSingleWin, earned);
+    saveMissionStats();
+  }
+  function recordHorseResult(win, earned, winnerIndex) {
+    if (win) {
+      missionStats.horseWins++;
+      missionStats.horseStreak++;
+      missionStats.horseBestStreak = Math.max(missionStats.horseBestStreak, missionStats.horseStreak);
+      if (winnerIndex === HORSES.length - 1) missionStats.horseDarkWins++;
+      missionStats.maxSingleWin = Math.max(missionStats.maxSingleWin, earned);
+    } else {
+      missionStats.horseStreak = 0;
+    }
+    saveMissionStats();
+  }
+
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  }
+  function loginBonusAvailable() { return localStorage.getItem('casinoLoginLastDate') !== todayStr(); }
+
+  const CASINO_MISSIONS = [
+    { id: 'c1', title: 'スロット10回',     desc: 'スロットを10回回す',                 tickets: 500,   check: () => missionStats.slotSpins >= 10 },
+    { id: 'c2', title: 'ルーレット10回',   desc: 'ルーレットを10回回す',               tickets: 500,   check: () => missionStats.rouletteSpins >= 10 },
+    { id: 'c3', title: '競馬デビュー',     desc: '競馬に3回参加する',                 tickets: 500,   check: () => missionStats.horseRaces >= 3 },
+    { id: 'c4', title: 'スロット大当たり', desc: 'スロットで3つ揃えを出す',           tickets: 1000,  check: () => missionStats.slotWins >= 1 },
+    { id: 'c5', title: '競馬的中',         desc: '競馬で的中させる',                   tickets: 1500,  check: () => missionStats.horseWins >= 1 },
+    { id: 'c6', title: 'ピンポイント',     desc: 'ルーレットで数字を的中させる',       tickets: 5000,  check: () => missionStats.rouletteNumberHits >= 1 },
+    { id: 'c7', title: '銀行デビュー',     desc: '預金額が10,000枚に到達する',         tickets: 2000,  check: () => missionStats.maxBank >= 10000 },
+    { id: 'c8', title: '初めてのお買い物', desc: 'ショップで高級品を購入する',         tickets: 5000,  check: () => missionStats.purchases >= 1 },
+    { id: 'c9', title: 'コレクター',       desc: 'テーブルに3つ飾る',                 tickets: 10000, check: () => placedShopItems.filter(Boolean).length >= 3 },
+    { id: 'h1', title: '777の奇跡',        desc: '7️⃣を3つ揃える',                     diamonds: 1, check: () => missionStats.slotSeven >= 1, hard: true },
+    { id: 'h2', title: 'ベル以上コンプ',   desc: 'スロットで🔔以上の3つ揃えを3回出す', diamonds: 1, check: () => missionStats.slotBellPlus >= 3, hard: true },
+    { id: 'h3', title: 'ルーレットの神',   desc: 'ルーレットで数字を5回的中させる',   diamonds: 1, check: () => missionStats.rouletteNumberHits >= 5, hard: true },
+    { id: 'h4', title: '大穴を当てろ',     desc: '競馬で一番人気薄のダークホースを的中させる', diamonds: 1, check: () => missionStats.horseDarkWins >= 1, hard: true },
+    { id: 'h5', title: '競馬3連勝',        desc: '競馬で3連続的中させる',             diamonds: 1, check: () => missionStats.horseBestStreak >= 3, hard: true },
+    { id: 'h6', title: '一撃100万',        desc: '1回のゲームで100万枚以上獲得する',   diamonds: 1, check: () => missionStats.maxSingleWin >= 1000000, hard: true },
+    { id: 'h7', title: '大富豪',           desc: '預金額が100万枚に到達する',         diamonds: 1, check: () => missionStats.maxBank >= 1000000, hard: true },
+    { id: 'h8', title: 'お城のオーナー',   desc: 'ショップでお城を購入する',           diamonds: 1, check: () => ownedShopItems.includes('castle'), hard: true }
+  ];
+
+  function claimableMissionCount() {
+    let n = loginBonusAvailable() ? 1 : 0;
+    CASINO_MISSIONS.forEach(m => { if (!claimedMissions.includes(m.id) && m.check()) n++; });
+    return n;
+  }
+
+  function updateMissionBadge() {
+    const n = claimableMissionCount();
+    const badge = document.getElementById('mission-badge');
+    badge.innerText = n;
+    badge.style.display = n > 0 ? 'inline-block' : 'none';
+  }
+
+  function missionRow(m) {
+    const claimed = claimedMissions.includes(m.id);
+    const achieved = !claimed && m.check();
+    const reward = m.diamonds ? `💎 ${m.diamonds}個` : `🎫 ${m.tickets.toLocaleString()}枚`;
+    const action = claimed ? '<span class="mission-state">✅ 受取済み</span>'
+      : achieved ? `<button class="shop-btn buy" onclick="claimMission('${m.id}')">🎁 受け取る</button>`
+      : '<span class="mission-state">🔒 未達成</span>';
+    return `<div class="mission-item ${achieved ? 'achieved' : ''}">
+      <div><div class="mission-item-title">${m.title}</div><div class="mission-item-desc">${m.desc}</div><div class="mission-item-reward">${reward}</div></div>${action}</div>`;
+  }
+
+  function renderMissions() {
+    const avail = loginBonusAvailable();
+    const login = `<div class="mission-item ${avail ? 'achieved' : ''}">
+      <div><div class="mission-item-title">📅 ログインボーナス</div><div class="mission-item-desc">1日1回受け取れる（毎日0時にリセット）</div><div class="mission-item-reward">💎 1個</div></div>
+      ${avail ? '<button class="shop-btn buy" onclick="claimLoginBonus()">🎁 受け取る</button>' : '<span class="mission-state">✅ 本日受取済み</span>'}</div>`;
+    document.getElementById('mission-list').innerHTML =
+      `<p class="mission-section">📅 デイリー</p>${login}` +
+      `<p class="mission-section">🎯 ミッション</p>${CASINO_MISSIONS.filter(m => !m.hard).map(missionRow).join('')}` +
+      `<p class="mission-section">🔥 激ムズミッション（達成で💎1個）</p>${CASINO_MISSIONS.filter(m => m.hard).map(missionRow).join('')}`;
+    updateMissionBadge();
+  }
+
+  function toggleMissions() {
+    const panel = document.getElementById('mission-panel');
+    const opening = panel.style.display !== 'block';
+    if (opening) renderMissions();
+    panel.style.display = opening ? 'block' : 'none';
+  }
+
+  function claimLoginBonus() {
+    if (!loginBonusAvailable()) return;
+    localStorage.setItem('casinoLoginLastDate', todayStr());
+    addDiamonds(1);
+    renderMissions();
+    alert('📅 ログインボーナス！\n💎 ダイヤを1個GET！');
+  }
+
+  function claimMission(id) {
+    const m = CASINO_MISSIONS.find(x => x.id === id);
+    if (!m || claimedMissions.includes(id) || !m.check()) return;
+    claimedMissions.push(id);
+    localStorage.setItem('casinoClaimedMissions', JSON.stringify(claimedMissions));
+    if (m.diamonds) addDiamonds(m.diamonds);
+    if (m.tickets) updateTickets(m.tickets);
+    renderMissions();
+    alert(`🎉 ミッション「${m.title}」達成！\n` + (m.diamonds ? `💎 ダイヤを${m.diamonds}個GET！` : `🎫 トークンを${m.tickets.toLocaleString()}枚GET！`));
+  }
+
+  updateMissionBadge();
 
   // ============================================================
   // アクセスカウンター（Firebase Realtime Database）
@@ -1303,6 +1547,7 @@
     if (slotBet <= 0) { alert('賭け金を選んでね！'); return; }
     if (tickets < slotBet) { alert('トークンが足りません！'); return; }
     slotSpinning = true;
+    recordStat('slotSpins');
     updateTickets(-slotBet);
     document.getElementById('slot-spin-btn').disabled = true;
     document.getElementById('slot-result').innerText = '';
@@ -1347,6 +1592,7 @@
       updateTickets(earned);
       msg += `<br>🎫 ${earned.toLocaleString()}枚 獲得！`;
     }
+    recordSlotResult(targets, earned);
     document.getElementById('slot-result').innerHTML = msg;
   }
 
@@ -1452,6 +1698,7 @@
     if (tickets < rouletteBet) { alert('トークンが足りません！'); return; }
 
     rouletteSpinning = true;
+    recordStat('rouletteSpins');
     updateTickets(-rouletteBet);
     document.getElementById('roulette-spin-btn').disabled = true;
     document.getElementById('roulette-result').innerText = '';
@@ -1496,6 +1743,7 @@
       updateTickets(earned);
       msg += `<br>🎉 的中！ 🎫 ${earned.toLocaleString()}枚 獲得！`;
       spawnCoins(selectedBetType === 'number' ? 50 : 20);
+      recordRouletteWin(selectedBetType === 'number', earned);
     } else {
       msg += '<br>😢 残念、はずれ…';
     }
@@ -1506,11 +1754,11 @@
   // 競馬
   // ============================================================
   const HORSES = [
-    { name: 'サンダーボルト',   color: '#e63946', odds: 2,  weight: 35 },
-    { name: 'ブラックパンサー', color: '#1a1a1a', odds: 3,  weight: 25 },
-    { name: 'ゴールドラッシュ', color: '#ffd23f', odds: 5,  weight: 18 },
-    { name: 'ウィンドランナー', color: '#00e5ff', odds: 8,  weight: 12 },
-    { name: 'ダークホース',     color: '#9d4edd', odds: 15, weight: 6 }
+    { name: 'サンダーボルト',   color: '#e63946', odds: 3,  weight: 35 },
+    { name: 'ブラックパンサー', color: '#1a1a1a', odds: 5,  weight: 25 },
+    { name: 'ゴールドラッシュ', color: '#ffd23f', odds: 8,  weight: 18 },
+    { name: 'ウィンドランナー', color: '#00e5ff', odds: 14, weight: 12 },
+    { name: 'ダークホース',     color: '#9d4edd', odds: 25, weight: 6 }
   ];
   let horseBet = 0;
   let selectedHorseIndex = null;
@@ -1674,6 +1922,7 @@
     if (tickets < horseBet) { alert('トークンが足りません！'); return; }
 
     horseRacing = true;
+    recordStat('horseRaces');
     updateTickets(-horseBet);
     document.getElementById('horse-spin-btn').disabled = true;
     document.getElementById('horse-result').innerText = '';
@@ -1726,7 +1975,9 @@
       updateTickets(earned);
       msg += `<br>🎉 的中！ 🎫 ${earned.toLocaleString()}枚 獲得！`;
       spawnCoins(30);
+      recordHorseResult(true, earned, winnerIndex);
     } else {
+      recordHorseResult(false, 0, winnerIndex);
       msg += '<br>😢 残念、はずれ…';
     }
     document.getElementById('horse-commentary').innerText = '';
