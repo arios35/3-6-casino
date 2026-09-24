@@ -528,6 +528,22 @@
   }
   .hl-cards .playing-card { width: 72px; height: 104px; font-size: 26px; }
 
+  /* --- カード記憶 --- */
+  .mem-table {
+    background: radial-gradient(ellipse at 50% 30%, #138a4f 0%, var(--green-felt) 65%, #073d22 100%);
+    border: 3px solid var(--gold-dark);
+    border-radius: 16px;
+    padding: 16px 8px 14px 8px;
+  }
+  .mem-board { position: relative; width: 302px; max-width: 100%; height: 80px; margin: 0 auto; }
+  .mem-slot { position: absolute; top: 0; width: 54px; height: 78px; }
+  .mem-slot .playing-card { margin: 0; width: 54px; height: 78px; }
+  .mem-slot.pickable { cursor: pointer; }
+  .mem-slot.pickable:active { transform: translateY(-5px); }
+  .mem-slot.odd .playing-card { box-shadow: 0 0 16px 3px #2be07a; }
+  .mem-slot.wrong .playing-card { box-shadow: 0 0 16px 3px #ff4d4d; }
+  .mem-msg { text-align: center; font-size: 13px; color: #d9f5e3; margin-top: 10px; min-height: 20px; }
+
   /* --- ショップ --- */
   .shop-item {
     display: flex;
@@ -953,6 +969,7 @@
     <a class="lobby-btn" href="#cabinet-horse">🐎 競馬</a>
     <a class="lobby-btn" href="#cabinet-bj">🃏 ブラックジャック</a>
     <a class="lobby-btn" href="#cabinet-hl">🔼 ハイ&amp;ロー</a>
+    <a class="lobby-btn" href="#cabinet-mem">🧠 カード記憶</a>
     <a class="lobby-btn" href="#cabinet-bank">🏦 銀行</a>
     <a class="lobby-btn" href="#bank-ranking">🏆 預金ランキング</a>
     <a class="lobby-btn" href="#cabinet-shop">🛒 ショップ</a>
@@ -1111,7 +1128,7 @@
 <div class="cabinet" id="cabinet-hl">
   <div class="cabinet-header"><span class="cabinet-icon">🔼</span></div>
   <p class="cabinet-title">HIGH &amp; LOW</p>
-  <p class="cabinet-desc">次のカードが今のカードより「ハイ(大きい)」か「ロー(小さい)」かを当てよう！Aが最小、Kが最大で、同じ数字ははずれ。当てるたびに倍率が積み重なり、好きなタイミングで受け取れます（1回以上当てると受け取り可能。4連続以上で倍率ボーナス！50倍で自動受け取り）。</p>
+  <p class="cabinet-desc">次のカードが今のカードより「ハイ(大きい)」か「ロー(小さい)」かを当てよう！Aが最小、Kが最大で、同じ数字は出ません。当てるたびに倍率が積み重なり、好きなタイミングで受け取れます（1回以上当てると受け取り可能。4連続以上で倍率ボーナス！50倍で自動受け取り）。</p>
 
   <div class="hl-cards">
     <div id="hl-current"></div>
@@ -1136,6 +1153,33 @@
     <button class="shop-btn buy" id="hl-cash-btn" onclick="hlCashout()" disabled>💰 受け取る</button>
   </div>
   <div class="result-line" id="hl-result"></div>
+</div>
+
+<!-- カード記憶 -->
+<div class="cabinet" id="cabinet-mem">
+  <div class="cabinet-header"><span class="cabinet-icon">🧠</span></div>
+  <p class="cabinet-title">CARD MEMORY</p>
+  <p class="cabinet-desc">5枚のカードのうち、1枚だけ違うカードを覚えて、シャッフルされても目で追おう！カードが裏返ったら、違う1枚を選んでね。1回でも間違えたらアウト。3回正解すると速くて難しくなり、そこからは1ラウンドごとにどんどん難しくなります。倍率はハイ&amp;ローより高め！</p>
+
+  <div class="mem-table"><div class="mem-board" id="mem-board"></div></div>
+  <div class="mem-msg" id="mem-msg">賭け金を決めてスタート！</div>
+  <div class="current-bet-display">ラウンド: <span id="mem-round">-</span> ／ 現在の倍率: <span id="mem-mult">-</span> ／ 受取額: <span id="mem-payout">0</span>枚<br>次の正解で: <span id="mem-next">-</span></div>
+
+  <div class="current-bet-display">賭け金: <span id="mem-bet-total">0</span>枚</div>
+  <div class="bet-row" style="margin-top:8px;" id="mem-bet-row">
+    <button class="bet-btn" onclick="addBet('mem',100)">+100</button>
+    <button class="bet-btn" onclick="addBet('mem',500)">+500</button>
+    <button class="bet-btn" onclick="addBet('mem',1000)">+1000</button>
+    <button class="bet-btn" onclick="addBet('mem',3000)">+3000</button>
+    <button class="bet-btn clear" onclick="clearBet('mem')">クリア</button>
+  </div>
+
+  <button class="spin-btn" id="mem-start-btn" onclick="memStart()">🧠 スタート 🧠</button>
+  <div class="game-actions" style="grid-template-columns: 1fr 1fr;">
+    <button class="shop-btn" id="mem-next-btn" onclick="memNextRound()" disabled>▶ 次のラウンドへ</button>
+    <button class="shop-btn buy" id="mem-cash-btn" onclick="memCashout()" disabled>💰 受け取る</button>
+  </div>
+  <div class="result-line" id="mem-result"></div>
 </div>
 
 <!-- 銀行 -->
@@ -1719,7 +1763,7 @@
   function hlFactor(dir) {
     const w = hlWinCount(dir);
     const bonus = (hl.streak + 1 >= HL_BONUS_STREAK) ? HL_STREAK_BONUS : 1;
-    return w > 0 ? Math.round((13 / w) * HL_EDGE * bonus * 100) / 100 : 0;
+    return w > 0 ? Math.round((12 / w) * HL_EDGE * bonus * 100) / 100 : 0;
   }
   function hlRender() {
     document.getElementById('hl-current').innerHTML = hl.cur ? cardHtml(hl.cur, false) : '';
@@ -1750,7 +1794,8 @@
   function hlGuess(dir) {
     if (!hlActive || hlFactor(dir) === 0) return;
     const factor = hlFactor(dir);
-    const next = randomCard();
+    let next = randomCard();
+    while (next.r === hl.cur.r) next = randomCard(); // 同じ数字は出さない
     const win = dir === 'high' ? next.r > hl.cur.r : next.r < hl.cur.r;
     document.getElementById('hl-next').innerHTML = cardHtml(next, false);
     if (win) {
@@ -1764,8 +1809,7 @@
       hlActive = false;
       hl.cur = hl.cur;
       hlRender();
-      document.getElementById('hl-result').innerHTML = next.r === hl.cur.r
-        ? '😢 同じ数字…はずれ！' : '😢 はずれ…';
+      document.getElementById('hl-result').innerHTML = '😢 はずれ…';
     }
   }
 
@@ -1797,8 +1841,8 @@
 
   // VIPボタンで賭け金を積んだゲームは「VIPベット」扱い（クリアで解除）。
   // VIPベットで当たると、通常演出より長く・大当たり演出より短い演出になる。
-  let vipBetUsed = { slot: false, roulette: false, horse: false, bj: false, hl: false };
-  function currentBet(g) { return { slot: slotBet, roulette: rouletteBet, horse: horseBet, bj: bjBet, hl: hlBet }[g]; }
+  let vipBetUsed = { slot: false, roulette: false, horse: false, bj: false, hl: false, mem: false };
+  function currentBet(g) { return { slot: slotBet, roulette: rouletteBet, horse: horseBet, bj: bjBet, hl: hlBet, mem: memBet }[g]; }
   function syncVipFlags() { Object.keys(vipBetUsed).forEach(g => { if (currentBet(g) === 0) vipBetUsed[g] = false; }); }
   function normalWin(game, n) {
     if (vipBetUsed[game]) celebrate(1, '👑 VIP WIN!! 👑'); else spawnCoins(n);
@@ -1810,7 +1854,7 @@
 
   function applyVipBetButtons() {
     if (!isVip) return;
-    ['slot', 'roulette', 'horse', 'bj', 'hl'].forEach(g => {
+    ['slot', 'roulette', 'horse', 'bj', 'hl', 'mem'].forEach(g => {
       const row = document.getElementById(g + '-bet-row');
       if (!row || row.querySelector('.vip')) return;
       const clear = row.querySelector('.clear');
@@ -1852,6 +1896,152 @@
   updateHud();
   applyVipBetButtons();
   renderVipShop();
+
+  // ============================================================
+  // カード記憶（5枚のうち1枚だけ違うカードをシャッフルから追う）
+  // ============================================================
+  // 正解ラウンド数ごとの累計倍率（ハイ&ローより高め）。最後まで正解すると自動で受け取り。
+  const MEM_MULTS = [1.5, 2.2, 3.2, 6, 12, 25, 50, 100, 200, 400, 800, 1500];
+  const MEM_SLOT_STEP = 62;
+  let memBet = 0;
+  let memActive = false;
+  let mem = { round: 0, cleared: 0, mult: 1, state: 'idle', cards: [], bet: 0 };
+
+  // ラウンドごとの難易度：3回までは遅め、4回目以降は速く・回数も増えて、進むほど加速
+  function memParams(round) {
+    if (round <= 3) return { swaps: 4 + round, swapMs: 640, reveal: 1800 };
+    const k = round - 3;
+    return { swaps: 8 + k * 2, swapMs: Math.max(110, 430 - k * 50), reveal: Math.max(700, 1500 - k * 110) };
+  }
+
+  function memInfo() {
+    document.getElementById('mem-round').innerText = memActive ? mem.round : '-';
+    document.getElementById('mem-mult').innerText = (memActive && mem.cleared > 0) ? `×${mem.mult}` : '-';
+    document.getElementById('mem-payout').innerText = (memActive && mem.cleared > 0) ? Math.floor(mem.bet * mem.mult).toLocaleString() : '0';
+    document.getElementById('mem-next').innerText = (memActive && mem.cleared < MEM_MULTS.length) ? `×${MEM_MULTS[mem.cleared]}` : '-';
+    document.getElementById('mem-start-btn').disabled = memActive;
+    document.getElementById('mem-next-btn').disabled = !(memActive && mem.state === 'between');
+    document.getElementById('mem-cash-btn').disabled = !(memActive && mem.state === 'between');
+  }
+  function memMsg(t) { document.getElementById('mem-msg').innerText = t; }
+
+  function memBuild() {
+    const board = document.getElementById('mem-board');
+    board.innerHTML = '';
+    const common = randomCard();
+    let odd = randomCard();
+    while (odd.r === common.r) odd = randomCard();
+    const oddIdx = Math.floor(Math.random() * 5);
+    mem.cards = [];
+    for (let i = 0; i < 5; i++) {
+      const el = document.createElement('div');
+      el.className = 'mem-slot';
+      const card = { id: i, face: i === oddIdx ? odd : common, isOdd: i === oddIdx, slot: i, el };
+      el.style.left = (i * MEM_SLOT_STEP) + 'px';
+      el.onclick = () => memPick(i);
+      board.appendChild(el);
+      mem.cards.push(card);
+    }
+  }
+  function memFlip(faceUp) {
+    mem.cards.forEach(c => { c.el.innerHTML = cardHtml(c.face, !faceUp); });
+  }
+
+  function memShuffle(n, ms, done) {
+    const step = (i) => {
+      if (i >= n) { setTimeout(done, ms); return; }
+      const oddCard = mem.cards.find(c => c.isOdd);
+      let a, b;
+      if (Math.random() < 0.7) {
+        a = oddCard;
+        do { b = mem.cards[Math.floor(Math.random() * 5)]; } while (b === a);
+      } else {
+        do { a = mem.cards[Math.floor(Math.random() * 5)]; b = mem.cards[Math.floor(Math.random() * 5)]; } while (a === b);
+      }
+      const t = a.slot; a.slot = b.slot; b.slot = t;
+      [a, b].forEach(c => {
+        c.el.style.transition = `left ${Math.round(ms * 0.9)}ms ease-in-out`;
+        c.el.style.left = (c.slot * MEM_SLOT_STEP) + 'px';
+      });
+      setTimeout(() => step(i + 1), ms);
+    };
+    step(0);
+  }
+
+  function memStart() {
+    if (memActive) return;
+    if (memBet <= 0) { alert('賭け金を選んでね！'); return; }
+    if (tickets < memBet) { alert('トークンが足りません！'); return; }
+    updateTickets(-memBet);
+    mem = { round: 0, cleared: 0, mult: 1, state: 'idle', cards: [], bet: memBet };
+    memActive = true;
+    document.getElementById('mem-result').innerText = '';
+    memNextRound();
+  }
+
+  function memNextRound() {
+    if (!memActive || (mem.state !== 'idle' && mem.state !== 'between')) return;
+    mem.round++;
+    mem.state = 'showing';
+    const prm = memParams(mem.round);
+    memBuild();
+    memFlip(true);
+    memInfo();
+    memMsg(`ラウンド${mem.round}：違う1枚をよ〜く見て覚えて！` + (mem.round > 3 ? '（スピードアップ！）' : ''));
+    setTimeout(() => {
+      memFlip(false);
+      mem.state = 'shuffling';
+      memMsg('シャッフル中… 目で追え！');
+      memShuffle(prm.swaps, prm.swapMs, () => {
+        mem.state = 'picking';
+        mem.cards.forEach(c => c.el.classList.add('pickable'));
+        memMsg('違う1枚はどれ？ タップして選んで！');
+      });
+    }, prm.reveal);
+  }
+
+  function memPick(id) {
+    if (mem.state !== 'picking') return;
+    mem.state = 'result';
+    const picked = mem.cards.find(c => c.id === id);
+    mem.cards.forEach(c => c.el.classList.remove('pickable'));
+    memFlip(true);
+    mem.cards.find(c => c.isOdd).el.classList.add('odd');
+    if (picked.isOdd) {
+      mem.cleared++;
+      mem.mult = MEM_MULTS[mem.cleared - 1];
+      if (mem.cleared >= MEM_MULTS.length) { mem.state = 'between'; memInfo(); memCashout(); return; }
+      mem.state = 'between';
+      memMsg(`⭕ 正解！ ${mem.cleared}連続！` + (mem.cleared === 3 ? ' ここから速くて難しくなるよ…' : ''));
+      memInfo();
+    } else {
+      picked.el.classList.add('wrong');
+      memActive = false;
+      mem.state = 'idle';
+      memMsg('❌ 不正解…アウト！');
+      document.getElementById('mem-result').innerText = '😢 残念、賭け金は没収…';
+      memInfo();
+    }
+  }
+
+  function memCashout() {
+    if (!memActive || mem.state !== 'between' || mem.cleared === 0) return;
+    const payout = Math.floor(mem.bet * mem.mult);
+    memActive = false;
+    mem.state = 'idle';
+    updateTickets(payout);
+    memInfo();
+    memMsg(`💰 ${mem.cleared}連続クリアで受け取り！`);
+    document.getElementById('mem-result').innerHTML = `🎉 ×${mem.mult}<br>🎫 ${payout.toLocaleString()}枚 獲得！`;
+    if (mem.mult >= 200) celebrate(3, `🧠 CARD MEMORY<br>×${mem.mult} 大成功!!`);
+    else if (mem.mult >= 25) celebrate(2, `🧠 ×${mem.mult} 大成功!!`);
+    else if (mem.mult >= 6) celebrate(1, `🧠 ×${mem.mult}！`);
+    else normalWin('mem', 20);
+    missionStats.maxSingleWin = Math.max(missionStats.maxSingleWin, payout);
+    saveMissionStats();
+  }
+
+  memInfo();
 
   // ============================================================
   // アクセスカウンター（Firebase Realtime Database）
@@ -1917,6 +2107,7 @@
     if (game === 'horse') { if (horseRacing) return; horseBet += v; }
     if (game === 'bj') { if (bjActive) return; bjBet += v; }
     if (game === 'hl') { if (hlActive) return; hlBet += v; }
+    if (game === 'mem') { if (memActive) return; memBet += v; }
     refreshBetTotals();
   }
   function clearBet(game) {
@@ -1925,6 +2116,7 @@
     if (game === 'horse') { if (horseRacing) return; horseBet = 0; }
     if (game === 'bj') { if (bjActive) return; bjBet = 0; }
     if (game === 'hl') { if (hlActive) return; hlBet = 0; }
+    if (game === 'mem') { if (memActive) return; memBet = 0; }
     refreshBetTotals();
   }
   function refreshBetTotals() {
@@ -1933,6 +2125,7 @@
     document.getElementById('horse-bet-total').innerText = horseBet.toLocaleString();
     document.getElementById('bj-bet-total').innerText = bjBet.toLocaleString();
     document.getElementById('hl-bet-total').innerText = hlBet.toLocaleString();
+    document.getElementById('mem-bet-total').innerText = memBet.toLocaleString();
     if (typeof syncVipFlags === 'function') syncVipFlags();
   }
 
