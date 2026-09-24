@@ -188,6 +188,7 @@
     border-radius: 20px;
     cursor: pointer;
   }
+  .bet-btn.clear { border-color: rgba(255,77,77,0.6); color: #ff8a8a; }
   .bet-btn.active {
     background: var(--gold);
     color: #1a0a06;
@@ -378,24 +379,6 @@
     background: radial-gradient(circle, #ffe98a, var(--gold-dark));
     box-shadow: 0 0 10px rgba(255,210,63,0.7);
     z-index: 2;
-  }
-  .roulette-ball {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 10px;
-    height: 10px;
-    margin-left: -5px;
-    margin-top: -108px;
-    border-radius: 50%;
-    background: radial-gradient(circle, #fff, #ccc);
-    box-shadow: 0 0 6px rgba(255,255,255,0.8);
-    transform-origin: 50% 108px;
-    z-index: 4;
-    transform: rotate(0deg);
-  }
-  .roulette-ball.spinning {
-    transition: transform 6.4s cubic-bezier(0.08, 0.5, 0.1, 1);
   }
 
   .bet-grid {
@@ -663,7 +646,7 @@
 <div class="cabinet">
   <div class="cabinet-header"><span class="cabinet-icon">🎰</span></div>
   <p class="cabinet-title">SLOT MACHINE</p>
-  <p class="cabinet-desc">3つ揃えると大当たり！7️⃣が3つ揃えば掛け金の100倍。ミニゲーム部屋と共通のトークンを使います。</p>
+  <p class="cabinet-desc">3つ揃えると大当たり！7️⃣が3つ揃えば掛け金の777倍。ミニゲーム部屋と共通のトークンを使います。</p>
 
   <div class="slot-machine">
     <div class="slot-window">
@@ -674,11 +657,13 @@
     </div>
   </div>
 
-  <div class="bet-row" id="slot-bet-row">
-    <button class="bet-btn active" data-bet="100" onclick="setSlotBet(100)">100枚</button>
-    <button class="bet-btn" data-bet="500" onclick="setSlotBet(500)">500枚</button>
-    <button class="bet-btn" data-bet="1000" onclick="setSlotBet(1000)">1000枚</button>
-    <button class="bet-btn" data-bet="3000" onclick="setSlotBet(3000)">3000枚</button>
+  <div class="current-bet-display">賭け金: <span id="slot-bet-total">0</span>枚</div>
+  <div class="bet-row" style="margin-top:8px;" id="slot-bet-row">
+    <button class="bet-btn" onclick="addBet('slot',100)">+100</button>
+    <button class="bet-btn" onclick="addBet('slot',500)">+500</button>
+    <button class="bet-btn" onclick="addBet('slot',1000)">+1000</button>
+    <button class="bet-btn" onclick="addBet('slot',3000)">+3000</button>
+    <button class="bet-btn clear" onclick="clearBet('slot')">クリア</button>
   </div>
 
   <button class="spin-btn" id="slot-spin-btn" onclick="spinSlot()">🎰 SPIN 🎰</button>
@@ -689,9 +674,9 @@
     <div>🍋×3<br>3倍</div>
     <div>🍊×3<br>5倍</div>
     <div>🍇×3<br>8倍</div>
-    <div>🔔×3<br>15倍</div>
-    <div>💎×3<br>30倍</div>
-    <div>7️⃣×3<br>100倍</div>
+    <div>🔔×3<br>30倍</div>
+    <div>💎×3<br>100倍</div>
+    <div>7️⃣×3<br>777倍</div>
     <div>🍒×2<br>掛け金戻し</div>
   </div>
 </div>
@@ -706,7 +691,6 @@
     <div class="roulette-pointer">▼</div>
     <div class="roulette-wheel-outer">
       <div class="roulette-wheel" id="roulette-wheel"></div>
-      <div class="roulette-ball" id="roulette-ball"></div>
       <div class="roulette-center"></div>
     </div>
   </div>
@@ -724,11 +708,13 @@
 
   <div class="current-bet-display">選択中の賭け: <span id="current-bet-label">なし</span></div>
 
-  <div class="bet-row" style="margin-top:14px;" id="roulette-bet-row">
-    <button class="bet-btn active" data-bet="100" onclick="setRouletteBet(100)">100枚</button>
-    <button class="bet-btn" data-bet="500" onclick="setRouletteBet(500)">500枚</button>
-    <button class="bet-btn" data-bet="1000" onclick="setRouletteBet(1000)">1000枚</button>
-    <button class="bet-btn" data-bet="3000" onclick="setRouletteBet(3000)">3000枚</button>
+  <div class="current-bet-display">賭け金: <span id="roulette-bet-total">0</span>枚</div>
+  <div class="bet-row" style="margin-top:8px;" id="roulette-bet-row">
+    <button class="bet-btn" onclick="addBet('roulette',100)">+100</button>
+    <button class="bet-btn" onclick="addBet('roulette',500)">+500</button>
+    <button class="bet-btn" onclick="addBet('roulette',1000)">+1000</button>
+    <button class="bet-btn" onclick="addBet('roulette',3000)">+3000</button>
+    <button class="bet-btn clear" onclick="clearBet('roulette')">クリア</button>
   </div>
 
   <button class="spin-btn" id="roulette-spin-btn" onclick="spinRoulette()">🎡 SPIN 🎡</button>
@@ -758,11 +744,13 @@
 
   <div class="current-bet-display">選択中の馬: <span id="current-horse-label">なし</span></div>
 
-  <div class="bet-row" id="horse-bet-row" style="margin-top:14px;">
-    <button class="bet-btn active" data-bet="100" onclick="setHorseBet(100)">100枚</button>
-    <button class="bet-btn" data-bet="500" onclick="setHorseBet(500)">500枚</button>
-    <button class="bet-btn" data-bet="1000" onclick="setHorseBet(1000)">1000枚</button>
-    <button class="bet-btn" data-bet="3000" onclick="setHorseBet(3000)">3000枚</button>
+  <div class="current-bet-display">賭け金: <span id="horse-bet-total">0</span>枚</div>
+  <div class="bet-row" style="margin-top:8px;" id="horse-bet-row">
+    <button class="bet-btn" onclick="addBet('horse',100)">+100</button>
+    <button class="bet-btn" onclick="addBet('horse',500)">+500</button>
+    <button class="bet-btn" onclick="addBet('horse',1000)">+1000</button>
+    <button class="bet-btn" onclick="addBet('horse',3000)">+3000</button>
+    <button class="bet-btn clear" onclick="clearBet('horse')">クリア</button>
   </div>
 
   <button class="spin-btn" id="horse-spin-btn" onclick="startHorseRace()">🐎 レース開始 🐎</button>
@@ -842,6 +830,27 @@
   }
 
   // ============================================================
+  // 賭け金：ボタンを押した分だけ加算（クリアで0に戻す）
+  // ============================================================
+  function addBet(game, v) {
+    if (game === 'slot') { if (slotSpinning) return; slotBet += v; }
+    if (game === 'roulette') { if (rouletteSpinning) return; rouletteBet += v; }
+    if (game === 'horse') { if (horseRacing) return; horseBet += v; }
+    refreshBetTotals();
+  }
+  function clearBet(game) {
+    if (game === 'slot') { if (slotSpinning) return; slotBet = 0; }
+    if (game === 'roulette') { if (rouletteSpinning) return; rouletteBet = 0; }
+    if (game === 'horse') { if (horseRacing) return; horseBet = 0; }
+    refreshBetTotals();
+  }
+  function refreshBetTotals() {
+    document.getElementById('slot-bet-total').innerText = slotBet.toLocaleString();
+    document.getElementById('roulette-bet-total').innerText = rouletteBet.toLocaleString();
+    document.getElementById('horse-bet-total').innerText = horseBet.toLocaleString();
+  }
+
+  // ============================================================
   // スロット
   // ============================================================
   const SYMBOLS = [
@@ -849,21 +858,14 @@
     { key: 'lemon',   emoji: '🍋', weight: 25, mult: 3 },
     { key: 'orange',  emoji: '🍊', weight: 20, mult: 5 },
     { key: 'grape',   emoji: '🍇', weight: 15, mult: 8 },
-    { key: 'bell',    emoji: '🔔', weight: 6,  mult: 15 },
-    { key: 'diamond', emoji: '💎', weight: 3,  mult: 30 },
-    { key: 'seven',   emoji: '7️⃣', weight: 1,  mult: 100 }
+    { key: 'bell',    emoji: '🔔', weight: 6,  mult: 30 },
+    { key: 'diamond', emoji: '💎', weight: 3,  mult: 100 },
+    { key: 'seven',   emoji: '7️⃣', weight: 1,  mult: 777 }
   ];
   const SLOT_SYMBOL_HEIGHT = 72;
   const SLOT_STRIP_REPEAT = 10;
-  let slotBet = 100;
+  let slotBet = 0;
   let slotSpinning = false;
-
-  function setSlotBet(v) {
-    slotBet = v;
-    document.querySelectorAll('#slot-bet-row .bet-btn').forEach(b => {
-      b.classList.toggle('active', parseInt(b.dataset.bet) === v);
-    });
-  }
 
   function buildReelStrip(el) {
     let html = '';
@@ -899,6 +901,7 @@
 
   function spinSlot() {
     if (slotSpinning) return;
+    if (slotBet <= 0) { alert('賭け金を選んでね！'); return; }
     if (tickets < slotBet) { alert('トークンが足りません！'); return; }
     slotSpinning = true;
     updateTickets(-slotBet);
@@ -1000,19 +1003,11 @@
     }
   })();
 
-  let rouletteBet = 100;
+  let rouletteBet = 0;
   let selectedBetType = null; // 'number' | 'red' | 'black' | 'even' | 'odd' | 'low' | 'high'
   let selectedNumber = null;
   let rouletteSpinning = false;
   let wheelRotation = 0;
-  let ballRotation = 0;
-
-  function setRouletteBet(v) {
-    rouletteBet = v;
-    document.querySelectorAll('#roulette-bet-row .bet-btn').forEach(b => {
-      b.classList.toggle('active', parseInt(b.dataset.bet) === v);
-    });
-  }
 
   function clearBetSelectionUI() {
     document.querySelectorAll('.num-cell.selected').forEach(c => c.classList.remove('selected'));
@@ -1054,15 +1049,13 @@
   function spinRoulette() {
     if (rouletteSpinning) return;
     if (!selectedBetType) { alert('賭け方を選んでね！（数字 or 赤黒・奇偶・大小など）'); return; }
+    if (rouletteBet <= 0) { alert('賭け金を選んでね！'); return; }
     if (tickets < rouletteBet) { alert('トークンが足りません！'); return; }
 
     rouletteSpinning = true;
     updateTickets(-rouletteBet);
     document.getElementById('roulette-spin-btn').disabled = true;
     document.getElementById('roulette-result').innerText = '';
-
-    const ball = document.getElementById('roulette-ball');
-    if (!ball.classList.contains('spinning')) ball.classList.add('spinning');
 
     const winIndex = Math.floor(Math.random() * WHEEL_ORDER.length);
     const winNumber = WHEEL_ORDER[winIndex];
@@ -1077,11 +1070,6 @@
     const wheel = document.getElementById('roulette-wheel');
     wheel.style.transform = `rotate(${wheelRotation}deg)`;
 
-    // 玉はホイールと逆回転で、さらに多く回してからゆっくり減速して止まる
-    // 玉は必ず「ちょうど◯周」で止める＝最終角度は常にポインター(真上)位置と一致させる
-    // これでホイールが止めた当選番号と、玉が落ちる位置が矛盾しなくなる
-    ballRotation -= 360 * 13;
-    ball.style.transform = `rotate(${ballRotation}deg)`;
 
     setTimeout(() => {
       evaluateRouletteResult(winNumber);
@@ -1125,16 +1113,9 @@
     { name: 'ウィンドランナー', color: '#00e5ff', odds: 8,  weight: 12 },
     { name: 'ダークホース',     color: '#9d4edd', odds: 15, weight: 6 }
   ];
-  let horseBet = 100;
+  let horseBet = 0;
   let selectedHorseIndex = null;
   let horseRacing = false;
-
-  function setHorseBet(v) {
-    horseBet = v;
-    document.querySelectorAll('#horse-bet-row .bet-btn').forEach(b => {
-      b.classList.toggle('active', parseInt(b.dataset.bet) === v);
-    });
-  }
 
   function selectHorse(i) {
     if (horseRacing) return;
@@ -1290,6 +1271,7 @@
   function startHorseRace() {
     if (horseRacing) return;
     if (selectedHorseIndex === null) { alert('賭ける馬を選んでね！'); return; }
+    if (horseBet <= 0) { alert('賭け金を選んでね！'); return; }
     if (tickets < horseBet) { alert('トークンが足りません！'); return; }
 
     horseRacing = true;
