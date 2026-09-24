@@ -1092,7 +1092,7 @@
 <div class="cabinet" id="cabinet-hl">
   <div class="cabinet-header"><span class="cabinet-icon">🔼</span></div>
   <p class="cabinet-title">HIGH &amp; LOW</p>
-  <p class="cabinet-desc">次のカードが今のカードより「ハイ(大きい)」か「ロー(小さい)」かを当てよう！Aが最小、Kが最大で、同じ数字ははずれ。当てるたびに倍率が積み重なり、好きなタイミングで受け取れます（1回以上当てると受け取り可能。1000倍で自動受け取り）。</p>
+  <p class="cabinet-desc">次のカードが今のカードより「ハイ(大きい)」か「ロー(小さい)」かを当てよう！Aが最小、Kが最大で、同じ数字ははずれ。当てるたびに倍率が積み重なり、好きなタイミングで受け取れます（1回以上当てると受け取り可能。100倍で自動受け取り）。</p>
 
   <div class="hl-cards">
     <div id="hl-current"></div>
@@ -1684,8 +1684,8 @@
   // ============================================================
   // ハイ＆ロー
   // ============================================================
-  const HL_EDGE = 1.2;       // 還元率（1.0=公平。1.0より大きいとプレイヤー有利）
-  const HL_MAX_MULT = 1000;  // この倍率に達したら自動で受け取り
+  const HL_EDGE = 0.97;      // 還元率（1.0未満でハウスエッジ）
+  const HL_MAX_MULT = 100;   // この倍率に達したら自動で受け取り
   let hlBet = 0;
   let hlActive = false;
   let hl = { cur: null, mult: 1, streak: 0, bet: 0 };
