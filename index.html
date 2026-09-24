@@ -303,6 +303,105 @@
   }
   .slot-paytable div { background: rgba(255,255,255,0.05); border-radius: 8px; padding: 6px 2px; }
 
+  html { scroll-behavior: smooth; }
+
+  /* --- ロビーテーブル（メニュー） --- */
+  .lobby-table {
+    max-width: 440px;
+    margin: 0 auto 40px auto;
+    padding: 20px 14px 22px 14px;
+    border-radius: 28px;
+    background: radial-gradient(ellipse at 50% 35%, #138a4f 0%, var(--green-felt) 58%, #073d22 100%);
+    border: 7px solid #5a3510;
+    box-shadow: 0 0 0 2px var(--gold-dark), 0 0 28px rgba(0,0,0,0.7), inset 0 0 34px rgba(0,0,0,0.55);
+    text-align: center;
+  }
+  .lobby-title {
+    font-family: 'Cinzel', serif;
+    font-weight: 900;
+    font-size: 20px;
+    letter-spacing: 3px;
+    margin: 0 0 14px 0;
+    color: var(--gold);
+    text-shadow: 0 0 10px rgba(255,210,63,0.5);
+  }
+  .lobby-menu {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .lobby-btn {
+    display: block;
+    padding: 14px 6px;
+    border-radius: 14px;
+    background: rgba(0,0,0,0.35);
+    border: 2px solid var(--gold);
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: bold;
+    text-decoration: none;
+  }
+  .lobby-btn:active { background: rgba(255,210,63,0.25); }
+  .lobby-sub {
+    font-size: 12px;
+    color: #d9f5e3;
+    margin: 20px 0 10px 0;
+  }
+  .table-slots {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .table-slot {
+    min-height: 92px;
+    border-radius: 16px;
+    border: 2px dashed rgba(255,210,63,0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 2px;
+    color: rgba(255,255,255,0.35);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .table-slot.filled {
+    border-style: solid;
+    border-color: var(--gold);
+    background: rgba(0,0,0,0.3);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .table-slot .slot-emoji { font-size: 36px; }
+
+  /* --- ショップ --- */
+  .shop-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .shop-item-info { display: flex; align-items: center; gap: 10px; }
+  .shop-item-emoji { font-size: 30px; }
+  .shop-item-name { font-weight: bold; font-size: 13px; }
+  .shop-item-price { font-size: 12px; color: var(--gold); }
+  .shop-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 12px;
+    border: 2px solid var(--gold);
+    background: rgba(255,210,63,0.15);
+    color: var(--gold);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .shop-btn.buy { background: var(--gold); color: #1a0a06; }
+
   /* --- コイン演出 --- */
   #coin-burst {
     position: fixed;
@@ -642,8 +741,21 @@
   🎫 トークン: <span id="ticket-count-header">5</span> 枚
 </div>
 
+<!-- ロビー（メニュー）テーブル -->
+<div class="lobby-table" id="lobby">
+  <p class="lobby-title">LOBBY TABLE</p>
+  <div class="lobby-menu">
+    <a class="lobby-btn" href="#cabinet-slot">🎰 スロット</a>
+    <a class="lobby-btn" href="#cabinet-roulette">🎡 ルーレット</a>
+    <a class="lobby-btn" href="#cabinet-horse">🐎 競馬</a>
+    <a class="lobby-btn" href="#cabinet-shop">🛒 ショップ</a>
+  </div>
+  <p class="lobby-sub">🏆 コレクションテーブル（ショップで買った物を飾れるよ／タップで外す）</p>
+  <div class="table-slots" id="table-slots"></div>
+</div>
+
 <!-- スロット -->
-<div class="cabinet">
+<div class="cabinet" id="cabinet-slot">
   <div class="cabinet-header"><span class="cabinet-icon">🎰</span></div>
   <p class="cabinet-title">SLOT MACHINE</p>
   <p class="cabinet-desc">3つ揃えると大当たり！7️⃣が3つ揃えば掛け金の777倍。ミニゲーム部屋と共通のトークンを使います。</p>
@@ -682,7 +794,7 @@
 </div>
 
 <!-- ルーレット -->
-<div class="cabinet">
+<div class="cabinet" id="cabinet-roulette">
   <div class="cabinet-header"><span class="cabinet-icon">🎡</span></div>
   <p class="cabinet-title">ROULETTE</p>
   <p class="cabinet-desc">数字を当てれば36倍、赤黒・奇偶・大小なら2倍。1つだけ選んでスピン！</p>
@@ -722,7 +834,7 @@
 </div>
 
 <!-- 競馬 -->
-<div class="cabinet">
+<div class="cabinet" id="cabinet-horse">
   <div class="cabinet-header"><span class="cabinet-icon">🐎</span></div>
   <p class="cabinet-title">HORSE RACING</p>
   <p class="cabinet-desc">1頭選んで賭けよう！オッズが高いほど当てるのは難しいけど配当は大きい。</p>
@@ -757,6 +869,15 @@
   <div class="result-line" id="horse-result"></div>
 </div>
 
+<!-- ショップ -->
+<div class="cabinet" id="cabinet-shop">
+  <div class="cabinet-header"><span class="cabinet-icon">🛒</span></div>
+  <p class="cabinet-title">VIP SHOP</p>
+  <p class="cabinet-desc">高級品をトークンで購入して、ロビーのテーブルに飾ろう！（購入品は端末に保存されます）</p>
+  <div id="casino-shop-list"></div>
+  <div class="result-line" id="shop-message"></div>
+</div>
+
 <script>
   // ============================================================
   // トークン管理：ミニゲーム部屋(minigame.html)と共通のキーを使用
@@ -784,6 +905,100 @@
       setTimeout(() => coin.remove(), 2600);
     }
   }
+
+  // ============================================================
+  // ショップ ＆ ロビーテーブル（購入品を飾る）
+  // ============================================================
+  const CASINO_SHOP_ITEMS = [
+    { id: 'watch',    emoji: '⌚', name: '高級腕時計',           price: 30000 },
+    { id: 'ring',     emoji: '💍', name: 'ダイヤの指輪',         price: 50000 },
+    { id: 'car',      emoji: '🚗', name: '高級セダン',           price: 100000 },
+    { id: 'supercar', emoji: '🏎️', name: 'スーパーカー',         price: 300000 },
+    { id: 'yacht',    emoji: '🛥️', name: '豪華ヨット',           price: 500000 },
+    { id: 'jet',      emoji: '🛩️', name: 'プライベートジェット', price: 1000000 },
+    { id: 'island',   emoji: '🏝️', name: '南の島',               price: 3000000 },
+    { id: 'castle',   emoji: '🏰', name: 'お城',                 price: 10000000 }
+  ];
+  const TABLE_SLOT_COUNT = 6;
+
+  let ownedShopItems = [];
+  try { ownedShopItems = JSON.parse(localStorage.getItem('casinoOwnedItems') || '[]'); } catch (e) { ownedShopItems = []; }
+  let placedShopItems = [];
+  try { placedShopItems = JSON.parse(localStorage.getItem('casinoPlacedItems') || '[]'); } catch (e) { placedShopItems = []; }
+  placedShopItems = Array.from({ length: TABLE_SLOT_COUNT }, (_, i) => placedShopItems[i] || null);
+
+  function saveShopState() {
+    localStorage.setItem('casinoOwnedItems', JSON.stringify(ownedShopItems));
+    localStorage.setItem('casinoPlacedItems', JSON.stringify(placedShopItems));
+  }
+
+  function renderTableSlots() {
+    const box = document.getElementById('table-slots');
+    box.innerHTML = placedShopItems.map((id, i) => {
+      const item = CASINO_SHOP_ITEMS.find(x => x.id === id);
+      return item
+        ? `<div class="table-slot filled" onclick="removeFromTable(${i})"><span class="slot-emoji">${item.emoji}</span><span>${item.name}</span></div>`
+        : `<div class="table-slot"><span class="slot-emoji" style="opacity:0.25;">＋</span><span>空き</span></div>`;
+    }).join('');
+  }
+
+  function renderCasinoShop() {
+    const list = document.getElementById('casino-shop-list');
+    list.innerHTML = CASINO_SHOP_ITEMS.map(item => {
+      const owned = ownedShopItems.includes(item.id);
+      const placed = placedShopItems.includes(item.id);
+      let btn;
+      if (!owned) btn = `<button class="shop-btn buy" onclick="buyCasinoItem('${item.id}')">購入</button>`;
+      else if (placed) btn = `<button class="shop-btn" onclick="removeItemById('${item.id}')">外す</button>`;
+      else btn = `<button class="shop-btn" onclick="placeOnTable('${item.id}')">テーブルに置く</button>`;
+      return `<div class="shop-item">
+        <div class="shop-item-info">
+          <span class="shop-item-emoji">${item.emoji}</span>
+          <div><div class="shop-item-name">${item.name}</div><div class="shop-item-price">🎫 ${item.price.toLocaleString()}枚</div></div>
+        </div>${btn}</div>`;
+    }).join('');
+  }
+
+  function refreshShopUI() {
+    renderTableSlots();
+    renderCasinoShop();
+  }
+
+  function buyCasinoItem(id) {
+    const item = CASINO_SHOP_ITEMS.find(x => x.id === id);
+    if (!item || ownedShopItems.includes(id)) return;
+    if (tickets < item.price) { alert('トークンが足りません！'); return; }
+    if (!confirm(`「${item.name}」を ${item.price.toLocaleString()}枚で購入しますか？`)) return;
+    updateTickets(-item.price);
+    ownedShopItems.push(id);
+    const empty = placedShopItems.indexOf(null);
+    if (empty !== -1) placedShopItems[empty] = id; // 空きがあれば自動でテーブルに飾る
+    saveShopState();
+    refreshShopUI();
+    document.getElementById('shop-message').innerText = `🎉 「${item.name}」を購入しました！` + (empty !== -1 ? 'ロビーのテーブルに飾ったよ。' : '');
+    spawnCoins(15);
+  }
+
+  function placeOnTable(id) {
+    const empty = placedShopItems.indexOf(null);
+    if (empty === -1) { alert('テーブルがいっぱいです！飾っている物をタップして外してね。'); return; }
+    placedShopItems[empty] = id;
+    saveShopState();
+    refreshShopUI();
+  }
+
+  function removeFromTable(index) {
+    placedShopItems[index] = null;
+    saveShopState();
+    refreshShopUI();
+  }
+
+  function removeItemById(id) {
+    const idx = placedShopItems.indexOf(id);
+    if (idx !== -1) removeFromTable(idx);
+  }
+
+  refreshShopUI();
 
   // ============================================================
   // アクセスカウンター（Firebase Realtime Database）
